@@ -46,25 +46,32 @@ if (!file.exists(file_path)) {
 # -------------------------------------------------------------------
 df <- read.csv(file_path, header = TRUE, stringsAsFactors = FALSE)
 
+
+# -------------------------------------------------------------------
+# Filter once: keep only Infection == 1 or NA
+# -------------------------------------------------------------------
+df_base <- df %>%
+  filter(is.na(Infection) | Infection == 1)
+
 # -------------------------------------------------------------------
 # Verify uniqueness of IDs
 # -------------------------------------------------------------------
-if (anyDuplicated(df$ID) > 0) {
+if (anyDuplicated(df_base$ID) > 0) {
   stop("Some IDs are duplicated in the dataset.")
 } else {
   cat("All row IDs are unique.\n")
 }
 
 # -------------------------------------------------------------------
-# Count rows before filtering
+# Count rows before further filtering
 # -------------------------------------------------------------------
-rows_before <- nrow(df)
-print(head(df))
+rows_before <- nrow(df_base)
+print(head(df_base))
 
 # -------------------------------------------------------------------
 # Handle YearOfBirth ranges and apply filtering
 # -------------------------------------------------------------------
-df_aug <- df %>%
+df_aug <- df_base %>%
   mutate(
     Gender = as.character(Gender),
     YearOfBirth_start = suppressWarnings(as.integer(sub("-.*", "", YearOfBirth))),
