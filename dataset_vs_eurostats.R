@@ -216,7 +216,7 @@ eu2_cz <- eu2_cz %>%
     Year      = as.integer(format(WeekDate, "%G")),   # ISO year
     Deaths    = value
   ) %>%
-  filter(!is.na(WeekDate), Week >= 1, Week <= 53) %>%
+  filter(!is.na(WeekDate), Week >= 1, Week <= 53, Year >= 2020) %>%
   arrange(WeekDate) %>%
   mutate(source = "Eurostat") %>%
   select(Year, Week, WeekDate, Deaths, source)
