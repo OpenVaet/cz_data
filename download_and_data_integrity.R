@@ -224,24 +224,30 @@ df_aug_resolved <- df_aug %>%
     ),
     earliest_two = pmin(death_from_death_field, death_from_facility_field, na.rm = TRUE),
     latest_two   = pmax(death_from_death_field, death_from_facility_field, na.rm = TRUE),
-    
+
     week_date_of_death = dplyr::case_when(
       is.na(death_from_death_field) & is.na(death_from_facility_field) ~ as.Date(NA),
       xor(is.na(death_from_death_field), is.na(death_from_facility_field)) ~
         dplyr::coalesce(death_from_death_field, death_from_facility_field),
-      
-      # both present
-      abs(offset_days) <= SMALL_OFFSET_DAYS ~ earliest_two,  # treat ±7 as the same event
-      TRUE                                  ~ latest_two     # large mismatch -> keep the latest
+      abs(offset_days) <= SMALL_OFFSET_DAYS ~ earliest_two,
+      TRUE                                  ~ latest_two
     ),
-    
+
     death_resolution_policy = dplyr::case_when(
       is.na(death_from_death_field) & is.na(death_from_facility_field) ~ "no_date",
       xor(is.na(death_from_death_field), is.na(death_from_facility_field)) ~ "single_source",
       abs(offset_days) <= SMALL_OFFSET_DAYS ~ "earliest_due_to_week_conflict",
       TRUE                                  ~ "latest_due_to_large_offset"
+    ),
+
+    # ---- NEW: age at death in (whole) years ----
+    age_at_death = dplyr::if_else(
+      !is.na(year_of_birth_start) & !is.na(week_date_of_death),
+      lubridate::year(week_date_of_death) - year_of_birth_start,
+      NA_integer_
     )
   )
+
 
 # Summary of resolution policies
 policy_summary <- df_aug_resolved %>%
