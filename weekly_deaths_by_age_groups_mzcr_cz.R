@@ -1,12 +1,16 @@
-library(dplyr)
-library(knitr)
-library(kableExtra)
-library(ggplot2)
-library(ISOweek)
-library(tidyr)
-library(lubridate)
-library(scales)
-library(RColorBrewer)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(knitr)
+  library(kableExtra)
+  library(ggplot2)
+  library(ISOweek)
+  library(tidyr)
+  library(lubridate)
+  library(scales)
+  library(RColorBrewer)
+  library(htmltools)
+  library(tibble)
+})
 
 # -------------------------------------------------------------------
 # Paths & URLs
@@ -177,4 +181,139 @@ ggplot(weekly_by_age, aes(x = week_start, y = deaths, fill = age_group)) +
     plot.subtitle= element_text(size = 14)
   )
 
+# -------------------------------------------------------------------
+# Contingency table: Year of Birth Known vs Unknown × Dead/Alive
+# -------------------------------------------------------------------
+# 0) Force both dimensions to have 2 levels (prevents 1-col/1-row collapse)
+df_aug <- df_aug %>%
+  mutate(
+    yob_known_factor = factor(!is.na(YearOfBirth_start), levels = c(FALSE, TRUE), labels = c("Unknown","Known")),
+    has_death_factor = factor(has_death, levels = c(FALSE, TRUE), labels = c("No","Yes"))
+  )
 
+# 1) Contingency table (always 2×2 now)
+contingency <- table(
+  `Year of birth` = df_aug$yob_known_factor,
+  `Dead`          = df_aug$has_death_factor
+)
+
+# 2) Counts with totals (your original approach)
+contingency_df <- as.data.frame.matrix(contingency)
+contingency_df$Total <- rowSums(contingency_df)
+contingency_df <- rbind(
+  contingency_df,
+  Total = colSums(contingency_df)
+)
+contingency_df <- contingency_df %>% rownames_to_column("Group")
+
+# 3) Row percentages with totals
+percent_mat <- round(100 * sweep(contingency, 1, rowSums(contingency), "/"), 1)
+percent_df  <- as.data.frame.matrix(percent_mat)
+percent_df$Total <- 100
+percent_df <- rbind(
+  percent_df,
+  Total = round(100 * colSums(contingency) / sum(contingency), 1)
+)
+percent_df <- percent_df %>% rownames_to_column("Group")
+
+# 4) Chi-square (fallback to Fisher if a row/col sum is zero)
+use_fisher <- any(rowSums(contingency) == 0) || any(colSums(contingency) == 0)
+if (use_fisher) {
+  test_name <- "Fisher’s exact test"
+  test <- fisher.test(contingency)
+  stat_txt <- "—"
+  df_txt <- "—"
+  p_txt <- if (test$p.value < 1e-4) "< 0.0001" else formatC(test$p.value, format="f", digits=4)
+} else {
+  test_name <- "Chi-square test of independence"
+  test <- suppressWarnings(chisq.test(contingency, correct = FALSE))
+  stat_txt <- sprintf("%.2f", unname(test$statistic))
+  df_txt <- sprintf("%d", unname(test$parameter))
+  p_txt <- if (test$p.value < 1e-4) "< 0.0001" else formatC(test$p.value, format="f", digits=4)
+}
+
+# 5) Pretty HTML tables
+counts_tbl <- kable(
+  contingency_df,
+  format = "html",
+  align = "lccc",
+  caption = "Contingency table (counts): Year of birth Known/Unknown × Death (Yes/No)",
+  col.names = c("Group", "Dead: No", "Dead: Yes", "Total"),
+  escape = FALSE
+) |>
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover")) |>
+  row_spec(0, bold = TRUE) |>
+  column_spec(1, bold = TRUE)
+
+pct_tbl <- kable(
+  percent_df,
+  format = "html",
+  align = "lccc",
+  caption = "Row percentages (%): proportions within Known/Unknown",
+  col.names = c("Group", "Dead: No", "Dead: Yes", "Total"),
+  escape = FALSE
+) |>
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover")) |>
+  row_spec(0, bold = TRUE) |>
+  column_spec(1, bold = TRUE)
+
+
+# 6) Light CSS + layout
+css <- HTML('
+<style>
+  .wrap {font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 0 auto; max-width: 1100px; padding: 1.25rem;}
+  .title {font-size: 1.6rem; font-weight: 700; margin-bottom: .25rem;}
+  .subtitle {color: #555; margin-bottom: 1rem;}
+  .grid {display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start;}
+  @media (max-width: 980px) {.grid {grid-template-columns: 1fr;}}
+  table {border-radius: 12px; overflow: hidden;}
+  .card {background: #fff; border: 1px solid #e8e8e8; border-radius: 14px; padding: 1rem 1.25rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); margin-bottom: 1rem;}
+  .card-title {font-weight: 700; margin-bottom: .5rem;}
+  .statline {display: flex; gap: 1.25rem; flex-wrap: wrap;}
+  .statline .label {display:block; color:#666; font-size:.85rem;}
+  .statline .value {display:block; font-weight:700; font-size:1.1rem;}
+  .note {color:#666; font-size:.9rem; margin-top:.4rem;}
+  .footer {color:#666; font-size:.85rem; margin-top: 1rem;}
+  .kable-table caption {caption-side: top !important; font-weight: 600; padding-bottom: .35rem;}
+</style>
+')
+
+header <- div(class = "title", "Mortality by Year-of-Birth Status (Czech COVID-19 dataset)")
+subhdr <- div(class = "subtitle",
+              HTML(sprintf("N = %s persons; generated on %s",
+                           format(sum(contingency), big.mark = " "),
+                           format(Sys.Date(), "%Y-%m-%d"))))
+
+test_card <- HTML(sprintf('
+  <div class="card">
+    <div class="card-title">%s</div>
+    <div class="statline">
+      <div><span class="label">χ²</span><span class="value">%s</span></div>
+      <div><span class="label">df</span><span class="value">%s</span></div>
+      <div><span class="label">p-value</span><span class="value">%s</span></div>
+    </div>
+    <div class="note">Association between death (Yes/No) and year-of-birth status (Known/Unknown).</div>
+  </div>', test_name, stat_txt, df_txt, p_txt))
+
+body <- div(
+  class = "grid",
+  div(class = "kable-table", HTML(counts_tbl)),
+  div(class = "kable-table", HTML(pct_tbl))
+)
+
+footer <- div(class = "footer",
+  HTML("Rows: <i>Year of birth status</i> (Unknown/Known). Columns: <i>Death</i> (Yes/No). Percentages are within rows.")
+)
+
+page <- tags$html(
+  tags$head(tags$meta(charset = "utf-8"), css, tags$title("Death × Year-of-Birth Status")),
+  tags$body(
+    div(class = "wrap", header, subhdr, test_card, body, footer)
+  )
+)
+
+# 7) Show + save
+browsable(page)
+dir.create("outputs", showWarnings = FALSE)
+save_html(page, file = "outputs/death_yob_known_unknown.html")
+message('Saved to outputs/death_yob_known_unknown.html')

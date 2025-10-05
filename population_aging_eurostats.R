@@ -392,7 +392,7 @@ p5 <- ggplot2::ggplot(df5, ggplot2::aes(x = Year, y = AgeGroup5, fill = delta_cl
   ggplot2::labs(
     title = "Cohort Aging — 5-Year Age Groups (Czechia)",
     subtitle = paste0(
-      "Years ", year_span, ". Cells outlined when |Δ| > ",
+      "Years ", year_span, ". Cells max. outlined when |Δ| > ",
       scales::comma(HIGHLIGHT_THRESHOLD),
       ". Red = negative Δ, Green = positive Δ."
     ),
