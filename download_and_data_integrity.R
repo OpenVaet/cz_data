@@ -239,8 +239,6 @@ df_aug_resolved <- df_aug %>%
       abs(offset_days) <= SMALL_OFFSET_DAYS ~ "earliest_due_to_week_conflict",
       TRUE                                  ~ "latest_due_to_large_offset"
     ),
-
-    # ---- NEW: age at death in (whole) years ----
     age_at_death = dplyr::if_else(
       !is.na(year_of_birth_start) & !is.na(week_date_of_death),
       lubridate::year(week_date_of_death) - year_of_birth_start,
@@ -283,24 +281,25 @@ is_missing <- function(x) {
 report_missing <- function(d, name) {
   n_all <- nrow(d)
   
-  na_yob      <- sum(is.na(d$YearOfBirth))
+  # derive numeric year if not already present
+  yob_num <- if ("year_of_birth_start" %in% names(d)) {
+    d$year_of_birth_start
+  } else {
+    suppressWarnings(as.integer(sub("-.*", "", d$YearOfBirth)))
+  }
+  
+  na_yob_num  <- sum(is.na(yob_num))
   na_gender   <- sum(is.na(d$Gender))
-  miss_yob    <- sum(is_missing(d$YearOfBirth))
-  miss_gender <- sum(is_missing(d$Gender))
   
   cat(sprintf(
-    "[%s] rows=%d\n  - YearOfBirth: NA=%d (%.2f%%), NA_or_blank=%d (%.2f%%)\n  - Gender:     NA=%d (%.2f%%), NA_or_blank=%d (%.2f%%)\n",
+    "[%s] rows=%d\n  - YearOfBirth (non-parsing -> NA): %d (%.2f%%)\n  - Gender: NA=%d (%.2f%%)\n",
     name, n_all,
-    na_yob,      if (n_all) 100*na_yob/n_all else 0,
-    miss_yob,    if (n_all) 100*miss_yob/n_all else 0,
-    na_gender,   if (n_all) 100*na_gender/n_all else 0,
-    miss_gender, if (n_all) 100*miss_gender/n_all else 0
+    na_yob_num, if (n_all) 100*na_yob_num/n_all else 0,
+    na_gender,  if (n_all) 100*na_gender/n_all else 0
   ))
 }
 
-report_missing(df,               "df (raw)")
 report_missing(df_base,          "df_base (<= first infection)")
-report_missing(df_aug_resolved,  "df_aug_resolved (resolved deaths)")
 
 # -------------------------------------------------------------------
 # Write the post-filtered augmented data

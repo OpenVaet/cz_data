@@ -354,3 +354,44 @@ for (grp in levels(combined_by_age$age_group)) {
     plot = p, width = 11, height = 6, dpi = 150
   )
 }
+
+# ================================================================
+# Weekly % of "missing deaths" by age group
+# Missing = (Eurostat - MZCR) when positive, else 0
+# Output: data/weekly_missing_deaths_among_age_groups.csv
+# ================================================================
+
+# Ensure age group order is consistent
+age_levels_combined <- c("Unknown","0–15","15-24","25–49","50–59","60–69","70–79","80+")
+
+missing_by_age <- combined_by_age %>%
+  tidyr::pivot_wider(
+    id_cols   = c(week_start, age_group),
+    names_from = source, values_from = deaths, values_fill = 0
+  ) %>%
+  dplyr::mutate(
+    age_group = factor(age_group, levels = age_levels_combined),
+    missing_deaths = pmax(Eurostat - MZCR, 0)
+  ) %>%
+  dplyr::group_by(week_start) %>%
+  dplyr::mutate(
+    total_missing_deaths_week = sum(missing_deaths, na.rm = TRUE),
+    pct_missing_share = dplyr::if_else(
+      total_missing_deaths_week > 0,
+      100 * missing_deaths / total_missing_deaths_week,
+      NA_real_
+    )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(week_start, age_group) %>%
+  dplyr::select(
+    week_start, age_group,
+    MZCR, Eurostat,
+    missing_deaths, total_missing_deaths_week,
+    pct_missing_share
+  )
+
+# Save
+write.csv(missing_by_age, "data/weekly_missing_deaths_among_age_groups.csv", row.names = FALSE)
+
+cat("Wrote: data/weekly_missing_deaths_among_age_groups.csv\n")

@@ -80,7 +80,7 @@ head(eu3)
 # -------------------------------------------------------------------
 # Path
 # -------------------------------------------------------------------
-file_path <- "data/mzcr_no_or_first_infection.csv"
+file_path <- "data/mzcr_no_or_first_infection_with_imputation.csv"
 
 # -------------------------------------------------------------------
 # Ensure the CZ data file is present
