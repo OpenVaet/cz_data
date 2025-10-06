@@ -143,8 +143,8 @@ ggplot(weekly_by_age_eu, aes(x = week_start, y = deaths, fill = age_group)) +
     expand  = expansion(mult = c(0.005, 0.01))
   ) +
   labs(
-    title    = "Weekly deaths by age group (Eurostat, rebinned)",
-    subtitle = "Czech Republic — ISO weeks; groups: 0–15, 15–24, 25–49, 50–59, 60–69, 70–79, 80+; 'Unknown' = missing age",
+    title    = "Eurostat - Weekly deaths by age group",
+    subtitle = "Czech Republic - ISO weeks",
     x = NULL, y = "Deaths (weekly total)"
   ) +
   guides(fill = guide_legend(reverse = TRUE)) +

@@ -272,6 +272,35 @@ resolved_conflicts <- df_aug_resolved %>%
                 offset_days, week_date_of_death, death_resolution_policy)
 write.csv(resolved_conflicts, "data/mzcr_death_resolution_cases.csv", row.names = FALSE, na = "")
 
+# -------------------------------------------------------------------
+# Missingness for YearOfBirth and Gender (NA and NA-or-blank)
+# -------------------------------------------------------------------
+is_missing <- function(x) {
+  x_chr <- as.character(x)
+  is.na(x_chr) | !nzchar(trimws(x_chr))
+}
+
+report_missing <- function(d, name) {
+  n_all <- nrow(d)
+  
+  na_yob      <- sum(is.na(d$YearOfBirth))
+  na_gender   <- sum(is.na(d$Gender))
+  miss_yob    <- sum(is_missing(d$YearOfBirth))
+  miss_gender <- sum(is_missing(d$Gender))
+  
+  cat(sprintf(
+    "[%s] rows=%d\n  - YearOfBirth: NA=%d (%.2f%%), NA_or_blank=%d (%.2f%%)\n  - Gender:     NA=%d (%.2f%%), NA_or_blank=%d (%.2f%%)\n",
+    name, n_all,
+    na_yob,      if (n_all) 100*na_yob/n_all else 0,
+    miss_yob,    if (n_all) 100*miss_yob/n_all else 0,
+    na_gender,   if (n_all) 100*na_gender/n_all else 0,
+    miss_gender, if (n_all) 100*miss_gender/n_all else 0
+  ))
+}
+
+report_missing(df,               "df (raw)")
+report_missing(df_base,          "df_base (<= first infection)")
+report_missing(df_aug_resolved,  "df_aug_resolved (resolved deaths)")
 
 # -------------------------------------------------------------------
 # Write the post-filtered augmented data

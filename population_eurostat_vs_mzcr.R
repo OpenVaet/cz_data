@@ -278,7 +278,7 @@ plot_df <- out_tbl %>%
   dplyr::mutate(
     `Age Group` = factor(`Age Group`, levels = unique(`Age Group`)),
     diff_min = `Diff (Min - EU)`,
-    label_col = ifelse(diff_min >= 0, "#007a1f", "#b30000"),
+    label_col = ifelse(diff_min >= 0, "#007a1f", "black"),
     label_txt = scales::comma(diff_min),
     label_y   = pmax(`MZCR Min. Age`, `EuroStat 2024`, 1) * 1.05
   )
@@ -291,21 +291,30 @@ bars_df <- plot_df %>%
     names_to = "series", values_to = "count"
   )
 
+# Ensure legend/order is MZCR first, Eurostat second
+bars_df <- bars_df %>%
+  dplyr::mutate(series = factor(series, levels = c("MZCR Min. Age", "EuroStat 2024")))
+
 # Plot
 p_comp <- ggplot(bars_df, aes(x = `Age Group`, y = count, fill = series)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.65) +
-  # Difference label centered above the pair
   geom_text(
     data = plot_df,
     aes(x = `Age Group`, y = label_y, label = label_txt, color = label_col),
     inherit.aes = FALSE, size = 3.6, fontface = "bold"
   ) +
   scale_y_continuous(labels = scales::label_number(scale_cut = scales::cut_si(""))) +
-  scale_fill_brewer(palette = "Set2", name = NULL) +
+  scale_fill_manual(
+    values = c(
+      "MZCR Min. Age" = "#2B6CB0",  # soft dark blue
+      "EuroStat 2024" = "#9B2C2C"   # soft dark red
+    ),
+    name = NULL
+  ) +
   scale_color_identity() +
   labs(
-    title = "Czechia — MZCR (Min Age) vs Eurostat 2024 by 5-year group",
-    subtitle = "Label = MZCR Min. Age − Eurostat 2024 (green = positive, red = negative)",
+    title = "Czechia - MZCR (Min Age) vs Eurostat 2024 by 5-year group",
+    subtitle = "Label = MZCR Min. Age - Eurostat 2024 (green = positive, red = negative)",
     x = NULL, y = "Population"
   ) +
   theme_minimal(base_size = 13) +
@@ -338,7 +347,7 @@ cat(
 p_comp <- p_comp +
   labs(
     subtitle = paste0(
-      "Label = MZCR Min. Age − Eurostat 2024 (green = positive, red = negative). ",
+      "Label = MZCR Min. Age - Eurostat 2024 (green offsets = positive, black = negative). ",
       "Total offset: ",
       ifelse(total_offset >= 0, "+", ""),
       scales::comma(total_offset)

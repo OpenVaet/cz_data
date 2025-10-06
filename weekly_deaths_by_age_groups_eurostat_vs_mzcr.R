@@ -2,90 +2,84 @@
 # Combined plot: MZCR (blue) over Eurostat (red), super-imposed
 # Age buckets: "Unknown","0–15","15-24","25–49","50–59","60–69","70–79","80+"
 # ================================================================
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(ISOweek)
-library(lubridate)
-library(scales)
-library(RColorBrewer)
-library(ggnewscale)   # allows two independent fill scales
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(knitr)
+  library(kableExtra)
+  library(ggplot2)
+  library(ISOweek)
+  library(tidyr)
+  library(lubridate)
+  library(scales)
+  library(RColorBrewer)
+  library(htmltools)
+  library(tibble)
+})
 
-dir.create("data", showWarnings = FALSE, recursive = TRUE)
+# -------------------------------------------------------------------
+# Path
+# -------------------------------------------------------------------
+file_path <- "data/mzcr_no_or_first_infection.csv"
 
-# ---------------------------
-# MZCR (individual-level) prep
-# ---------------------------
-file_path <- "data/Otevrena-data-NR-26-30-COVID-19-prehled-populace-2024-01.csv"
-file_url  <- "https://data.mzcr.cz/data/distribuce/402/Otevrena-data-NR-26-30-COVID-19-prehled-populace-2024-01.csv"
-
-cz_new_header <- paste0(
-  '"ID","Infection","Gender","YearOfBirth","DateOfPositivity","DateOfResult","Recovered","Death","Symptom","TestType","Date_First_Dose","Date_Second_Dose","Date_Third_Dose","Date_Fourth_Dose","Date_Fifth_Dose","Date_Sixth_Dose","Date_Seventh_Dose","VaccinationProductCode_First_Dose","VaccinationProductCode_Second_Dose","VaccinationProductCode_Third_Dose","VaccinationProductCode_Fourth_Dose","VaccinationProductCode_Fifth_Dose","VaccinationProductCode_Sixth_Dose","VaccinationProductCode_Seventh_Dose","PrimaryReasonForHospitalizationCOVID","binary_Hospitalization","min_Hospitalization","days_Hospitalization","max_Hospitalization","binary_ICU","min_ICU","days_ICU","max_ICU","binary_StandardWard","min_StandardWard","days_StandardWard","max_StandardWard","binary_Oxygen","min_Oxygen","days_Oxygen","max_Oxygen","binary_HFNO","min_HFNO","days_HFNO","max_HFNO","binary_MechanicalVentilation_ECMO","min_MechanicalVentilation_ECMO","days_MechanicalVentilation_ECMO","max_MechanicalVentilation_ECMO","Mutation","DateOfDeathInHealthcareFacility","Long_COVID","DCCI"'
-)
-
+# -------------------------------------------------------------------
+# Ensure the CZ data file is present
+# -------------------------------------------------------------------
 if (!file.exists(file_path)) {
-  options(timeout = 1200)
-  download.file(file_url, file_path, mode = "wb")
-  cz_lines <- readLines(file_path, warn = FALSE, encoding = "UTF-8")
-  if (length(cz_lines) > 0) {
-    cz_lines[1] <- cz_new_header
-    writeLines(cz_lines, file_path, useBytes = TRUE)
-  } else stop("Error on download; cannot replace header.")
+  stop("Error; run 'download_and_data_integrity.R' first.")
+} else {
+  cat("CZ enhanced data file found locally.\n")
 }
 
+# -------------------------------------------------------------------
+# Read the CZ CSV into a dataframe
+# -------------------------------------------------------------------
 df <- read.csv(file_path, header = TRUE, stringsAsFactors = FALSE)
 
-# Keep Infection == 1 or NA (stable base)
-df_base <- df %>% filter(is.na(Infection) | Infection == 1)
-
-df_aug <- df_base %>%
+# Small normalization used later (factors for the 2×2 table)
+df_aug <- df %>%
   mutate(
-    Gender = as.character(Gender),
-    YearOfBirth_start = suppressWarnings(as.integer(sub("-.*", "", YearOfBirth))),
-    has_death = !is.na(DateOfDeathInHealthcareFacility) & nzchar(trimws(DateOfDeathInHealthcareFacility))
+    gender = as.character(gender),
+    yob_known_factor = factor(!is.na(year_of_birth_start),
+                              levels = c(FALSE, TRUE),
+                              labels = c("Unknown","Known")),
+    has_death_factor = factor(has_death,
+                              levels = c(FALSE, TRUE),
+                              labels = c("No","Yes"))
   )
 
-# --- Weekly deaths by custom age buckets (MZCR) ---
+# -------------------------------------------------------------------
+# Weekly deaths by age group
+# -------------------------------------------------------------------
 age_levels <- c("Unknown","0–15","15-24","25–49","50–59","60–69","70–79","80+")
 
-weekly_mzcr <- df_aug %>%
+weekly_mzcr <- df %>%
+  # rely on precomputed has_death + week_date_of_death
   filter(has_death) %>%
   mutate(
-    death_week_raw = na_if(trimws(DateOfDeathInHealthcareFacility), ""),
-    iso_week = case_when(
-      !is.na(death_week_raw) & grepl("^\\d{4}-W\\d{2}$", death_week_raw) ~ death_week_raw,
-      !is.na(death_week_raw) & grepl("^\\d{4}-\\d{1,2}$", death_week_raw) ~ {
-        yy <- sub("^([0-9]{4}).*$", "\\1", death_week_raw)
-        ww <- suppressWarnings(as.integer(sub("^.*-([0-9]{1,2})$", "\\1", death_week_raw)))
-        ifelse(!is.na(ww) & ww >= 1 & ww <= 53, sprintf("%s-W%02d", yy, ww), NA_character_)
-      },
-      TRUE ~ NA_character_
-    ),
-    week_start = suppressWarnings(ISOweek2date(ifelse(is.na(iso_week), NA, paste0(iso_week, "-1")))),
+    week_start = as.Date(week_date_of_death),                 # already Monday of ISO week in the enhanced data
     iso_year   = suppressWarnings(as.integer(format(week_start, "%G"))),
-    age_at_death = ifelse(is.na(YearOfBirth_start) | is.na(iso_year), NA_real_, iso_year - YearOfBirth_start),
-    age_group = case_when(
-      is.na(YearOfBirth_start) ~ "Unknown",
+
+    # Age grouping; use provided age_at_death and fall back to Unknown if YOB missing
+    age_group = dplyr::case_when(
+      is.na(year_of_birth_start) ~ "Unknown",
       !is.na(age_at_death) & age_at_death <= 15 ~ "0–15",
-      age_at_death <= 24 ~ "15-24",
-      age_at_death <= 49 ~ "25–49",
-      age_at_death <= 59 ~ "50–59",
-      age_at_death <= 69 ~ "60–69",
-      age_at_death <= 79 ~ "70–79",
-      age_at_death > 79  ~ "80+",
+      !is.na(age_at_death) & age_at_death <= 24 ~ "15-24",
+      !is.na(age_at_death) & age_at_death <= 49 ~ "25–49",
+      !is.na(age_at_death) & age_at_death <= 59 ~ "50–59",
+      !is.na(age_at_death) & age_at_death <= 69 ~ "60–69",
+      !is.na(age_at_death) & age_at_death <= 79 ~ "70–79",
+      !is.na(age_at_death) & age_at_death > 79  ~ "80+",
       TRUE ~ "Unknown"
     )
   ) %>%
   filter(!is.na(week_start)) %>%
-  filter(is.na(YearOfBirth_start) | (age_at_death >= 0 & age_at_death <= 110)) %>%
+  # keep plausible ages when known
+  filter(is.na(year_of_birth_start) | (age_at_death >= 0 & age_at_death <= 110)) %>%
+  mutate(age_group = factor(age_group, levels = age_levels)) %>%
   group_by(week_start, age_group) %>%
   summarise(deaths = n(), .groups = "drop") %>%
   complete(week_start, age_group, fill = list(deaths = 0)) %>%
-  mutate(
-    age_group = factor(age_group, levels = age_levels),
-    source = "MZCR"
-  ) %>%
-  # Truncate to ISO years 2020–2024 for comparability
+  arrange(week_start, age_group) %>%
   mutate(iso_year = as.integer(format(week_start, "%G"))) %>%
   filter(iso_year >= 2020, iso_year <= 2024) %>%
   select(-iso_year)
@@ -242,7 +236,7 @@ ggplot() +
     expand = expansion(mult = c(0.005, 0.01))
   ) +
   labs(
-    title = "Weekly COVID-19 deaths by age group — MZCR (Blue) vs Eurostat (Red)",
+    title = "Weekly deaths by age group — MZCR (Blue) vs Eurostat (Red)",
     subtitle = "Czech Republic — ISO weeks (2020–2024); 'Unknown' = missing year of birth/age\nAreas are stacked within source and overlaid across sources",
     x = NULL, y = "Deaths (weekly total)"
   ) +
