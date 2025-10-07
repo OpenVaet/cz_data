@@ -96,15 +96,6 @@ if (!file.exists(file_path)) {
 # -------------------------------------------------------------------
 df <- read.csv(file_path, header = TRUE, stringsAsFactors = FALSE)
 
-# -------------------------------------------------------------------
-# Handle YearOfBirth end range and apply filtering
-# -------------------------------------------------------------------
-df_aug <- df %>%
-  mutate(
-    year_of_birth_end = suppressWarnings(as.integer(sub(".*-", "", YearOfBirth)))
-  )
-print(df_aug)
-
 # =========================
 # Compare df vs eu3 (2024)
 # =========================
@@ -158,7 +149,7 @@ to_iso_monday_safe <- function(x) {
 }
 
 # --- Keep only people alive on 2024-01-01 -----------------------------------
-df_alive_2024 <- df_aug %>%
+df_alive_2024 <- df %>%
   mutate(death_week_date = to_iso_monday_safe(DateOfDeathInHealthcareFacility)) %>%
   filter(is.na(death_week_date) | death_week_date >= as.Date("2024-01-01")) %>%
   select(-death_week_date)
@@ -448,5 +439,3 @@ totals_custom_by_sex <- plot_df_bins_sex %>%
   dplyr::group_by(sex_label) %>%
   dplyr::summarise(total_offset = sum(diff_min, na.rm = TRUE), .groups = "drop")
 print(totals_custom_by_sex)
-
-

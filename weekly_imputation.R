@@ -1,4 +1,4 @@
-# FITTING THE UNKNOWN COHORT
+# FITTING THE UNKNOWN COHORT - CORRECTED VERSION
 # ==================================================
 # Deaths: Fitted to death age shares
 # Non-deaths: Fitted to living population age shares (Eurostat)
@@ -104,13 +104,17 @@ main_data$has_gender <- !is.na(main_data$Gender) &
   nzchar(trimws(as.character(main_data$Gender))) &
   !(main_data$Gender %in% c("", "NA", "Unknown"))
 
-main_data$has_yob <- !is.na(main_data$year_of_birth_start) & 
-  main_data$year_of_birth_start > 1900 &
-  main_data$year_of_birth_start < 2025
+main_data$has_yob <- !is.na(main_data$year_of_birth_end) & 
+  main_data$year_of_birth_end > 1900 &
+  main_data$year_of_birth_end < 2025
 
 cat(sprintf("\nDeaths: %d | Non-deaths: %d\n", sum(main_data$is_death), sum(!main_data$is_death)))
 
 cat("\n=== STEP 4: Fitting Functions ===\n")
+
+# CRITICAL: Imputed birth years must align with min_age calculation used in comparisons
+# min_age = 2024 - year_of_birth_end - 1
+# Therefore: year_of_birth_end = ref_year - sampled_age - 1
 
 fit_yob <- function(n, age_dist, ref_years) {
   sampled_groups <- sample(1:nrow(age_dist), n, replace = TRUE, prob = age_dist$share)
@@ -121,7 +125,8 @@ fit_yob <- function(n, age_dist, ref_years) {
       ages[idx] <- sample(age_dist$min_age[g]:age_dist$max_age[g], length(idx), replace = TRUE)
     }
   }
-  ref_years - ages
+  # Adjust by -1 to align with min_age calculation (ref_year - age - 1)
+  ref_years - ages - 1
 }
 
 fit_gender <- function(n, gender_dist) {
@@ -131,7 +136,7 @@ fit_gender <- function(n, gender_dist) {
 cat("\n=== STEP 5: Fit Unknown Cohort ===\n")
 
 main_data$gender_imputed <- main_data$Gender
-main_data$yob_imputed <- main_data$year_of_birth_start
+main_data$yob_imputed <- main_data$year_of_birth_end
 main_data$imputed_flag_gender <- FALSE
 main_data$imputed_flag_yob <- FALSE
 
@@ -179,9 +184,9 @@ cat("\n=== STEP 6: Validate ===\n")
 
 # BEFORE IMPUTATION: Count by age group (only records with known YoB originally)
 before_counts <- main_data %>%
-  filter(!is.na(year_of_birth_start)) %>%  # Original known YoB
+  filter(!is.na(year_of_birth_end)) %>%  # Original known YoB
   mutate(
-    age_2024 = 2024 - year_of_birth_start,
+    age_2024 = 2024 - year_of_birth_end,
     age_group = cut(age_2024, breaks = c(-Inf, 15, 24, 49, 59, 69, 79, Inf),
                     labels = c("0–15", "15-24", "25–49", "50–59", "60–69", "70–79", "80+"), right = TRUE)
   ) %>%
@@ -274,7 +279,7 @@ final_data <- main_data %>%
       gender_imputed == "F" ~ "2",
       TRUE ~ gender_imputed
     ),
-    year_of_birth_start = yob_imputed,
+    year_of_birth_end = yob_imputed,
     age_at_death = if_else(is_death, year(week_date_of_death) - yob_imputed, NA_integer_)
   ) %>%
   select(-gender_imputed, -yob_imputed, -has_gender, -has_yob)

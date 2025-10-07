@@ -39,7 +39,7 @@ df <- read.csv(file_path, header = TRUE, stringsAsFactors = FALSE)
 df_aug <- df %>%
   mutate(
     gender = as.character(gender),
-    yob_known_factor = factor(!is.na(year_of_birth_start),
+    yob_known_factor = factor(!is.na(year_of_birth_end),
                               levels = c(FALSE, TRUE),
                               labels = c("Unknown","Known")),
     has_death_factor = factor(has_death,
@@ -61,7 +61,7 @@ weekly_mzcr <- df %>%
 
     # Age grouping; use provided age_at_death and fall back to Unknown if YOB missing
     age_group = dplyr::case_when(
-      is.na(year_of_birth_start) ~ "Unknown",
+      is.na(year_of_birth_end) ~ "Unknown",
       !is.na(age_at_death) & age_at_death <= 15 ~ "0–15",
       !is.na(age_at_death) & age_at_death <= 24 ~ "15-24",
       !is.na(age_at_death) & age_at_death <= 49 ~ "25–49",
@@ -74,7 +74,7 @@ weekly_mzcr <- df %>%
   ) %>%
   filter(!is.na(week_start)) %>%
   # keep plausible ages when known
-  filter(is.na(year_of_birth_start) | (age_at_death >= 0 & age_at_death <= 110)) %>%
+  filter(is.na(year_of_birth_end) | (age_at_death >= 0 & age_at_death <= 110)) %>%
   mutate(age_group = factor(age_group, levels = age_levels)) %>%
   group_by(week_start, age_group) %>%
   summarise(deaths = n(), .groups = "drop") %>%
@@ -174,6 +174,88 @@ weekly_eu <- bind_rows(eu_main, eu_split) %>%
   mutate(iso_year = as.integer(format(week_start, "%G"))) %>%
   filter(iso_year >= 2020, iso_year <= 2024) %>%
   select(-iso_year)
+
+# ================================================================
+# Global deaths comparison (total across all age groups)
+# Same style as download_and_data_integrity.R
+# ================================================================
+
+# Aggregate MZCR deaths across all age groups
+mzcr_total <- weekly_mzcr %>%
+  group_by(week_start) %>%
+  summarise(Deaths = sum(deaths, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    source = "Mzcr.cz",
+    iso_year = as.integer(format(week_start, "%G")),
+    iso_week = as.integer(format(week_start, "%V"))
+  ) %>%
+  rename(WeekDate = week_start, Year = iso_year, Week = iso_week) %>%
+  select(Year, Week, WeekDate, Deaths, source)
+
+# Aggregate Eurostat deaths across all age groups
+eurostat_total <- weekly_eu %>%
+  group_by(week_start) %>%
+  summarise(Deaths = sum(deaths, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    source = "Eurostat",
+    iso_year = as.integer(format(week_start, "%G")),
+    iso_week = as.integer(format(week_start, "%V"))
+  ) %>%
+  rename(WeekDate = week_start, Year = iso_year, Week = iso_week) %>%
+  select(Year, Week, WeekDate, Deaths, source)
+
+# Combine for plotting
+plot_df_total <- bind_rows(mzcr_total, eurostat_total) %>%
+  arrange(source, WeekDate) %>%
+  group_by(source) %>%
+  mutate(
+    point_idx = row_number(),
+    show_label = point_idx %% 10 == 0
+  ) %>%
+  ungroup()
+
+# Create the comparison plot
+gg_total <- ggplot(plot_df_total, aes(x = WeekDate, y = Deaths, color = source, linetype = source)) +
+  geom_line(linewidth = 1.1) +
+  geom_point(size = 1.8, alpha = 0.7) +
+  geom_text(
+    data = subset(plot_df_total, show_label),
+    aes(label = Deaths),
+    vjust = -0.6,
+    size = 4.5,
+    show.legend = FALSE
+  ) +
+  scale_linetype_manual(
+    values = c("Eurostat" = "dashed", "Mzcr.cz" = "solid"),
+    guide = guide_legend(override.aes = list(linewidth = 1.3))
+  ) +
+  scale_color_manual(
+    values = c("Eurostat" = "#1f77b4", "Mzcr.cz" = "#d62728")
+  ) +
+  scale_x_date(date_breaks = "5 weeks", date_labels = "%G-W%V") +
+  labs(
+    title = "Deaths by ISO Year-Week: Eurostat vs. MZCR",
+    subtitle = "Dashed = Eurostat weekly deaths · Solid = MZCR deaths in healthcare facilities",
+    x = "ISO Week",
+    y = "Deaths",
+    color = "Dataset",
+    linetype = "Dataset"
+  ) +
+  theme_minimal(base_size = 18) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
+    axis.title = element_text(size = 18),
+    plot.title = element_text(size = 22, face = "bold"),
+    plot.subtitle = element_text(size = 16),
+    legend.title = element_text(size = 16),
+    legend.text  = element_text(size = 14),
+    panel.grid.minor = element_blank()
+  )
+
+print(gg_total)
+
+cat("\n=== Global deaths comparison plot created ===\n\n")
 
 # ---------------------------
 # Palettes (same lightness ranks across sources)

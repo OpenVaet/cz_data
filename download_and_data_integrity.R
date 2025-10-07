@@ -109,6 +109,7 @@ df_aug <- df_base %>%
   mutate(
     gender = as.character(Gender),
     year_of_birth_start = suppressWarnings(as.integer(sub("-.*", "", YearOfBirth))),
+    year_of_birth_end = suppressWarnings(as.integer(sub(".*-", "", YearOfBirth))),
     has_first_dose = !is.na(Date_First_Dose) & nzchar(trimws(Date_First_Dose)),
     has_death = !is.na(DateOfDeathInHealthcareFacility) & nzchar(trimws(DateOfDeathInHealthcareFacility)),
     week_date_of_birth   = to_iso_monday_flex(YearOfBirth),

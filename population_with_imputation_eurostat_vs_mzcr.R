@@ -32,26 +32,29 @@ eu_cz <- eu %>%
 
 # Load imputed dataset
 df <- read.csv("data/mzcr_no_or_first_infection_with_imputation.csv", stringsAsFactors = FALSE)
-print(df)
+
+cat(sprintf("Loaded %d records from imputed file\n", nrow(df)))
 
 # Filter alive on 2024-01-01
 df_alive <- df %>%
   mutate(week_date_of_death = as.Date(week_date_of_death)) %>%
   filter(is.na(week_date_of_death) | week_date_of_death >= as.Date("2024-01-01")) %>%
-  filter(!is.na(year_of_birth_start), !is.na(Gender)) %>%
+  filter(!is.na(year_of_birth_end), !is.na(Gender)) %>%
   mutate(
-    age_2024 = 2024L - year_of_birth_start,
+    min_age = pmax(0L, 2024L - year_of_birth_end - 1L),
     sex = ifelse(Gender == "1", "M", "F")
   ) %>%
-  filter(age_2024 >= 0, age_2024 <= 105)
+  filter(min_age >= 0, min_age <= 105)
 
-# Age bands
+cat(sprintf("Filtered to %d records alive on 2024-01-01\n", nrow(df_alive)))
+
+# Age bands (matching pre-imputation)
 bands_breaks <- c(-1, 14, 29, 49, 64, Inf)
 bands_labels <- c("0-14", "15-29", "30-49", "50-64", "65+")
 
-# Aggregate MZCR
+# Aggregate MZCR (using min_age like pre-imputation)
 mzcr_agg <- df_alive %>%
-  mutate(age_group = cut(age_2024, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
+  mutate(age_group = cut(min_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
   count(sex, age_group, name = "MZCR")
 
 # Aggregate Eurostat
@@ -66,12 +69,16 @@ comparison <- full_join(mzcr_agg, eu_agg, by = c("sex", "age_group")) %>%
     MZCR = replace_na(MZCR, 0L),
     Eurostat = replace_na(Eurostat, 0),
     Difference = MZCR - Eurostat,
+    Pct_Diff = 100 * Difference / Eurostat,
     sex_label = recode(sex, M = "Male", F = "Female")
   ) %>%
   arrange(sex_label, age_group)
 
 # Print comparison
-kable(comparison %>% select(sex_label, age_group, MZCR, Eurostat, Difference)) %>%
+cat("\n=== COMPARISON: MZCR Imputed vs Eurostat 2024 ===\n\n")
+kable(comparison %>% select(sex_label, age_group, MZCR, Eurostat, Difference, Pct_Diff),
+      digits = 1,
+      col.names = c("Sex", "Age Group", "MZCR", "Eurostat", "Difference", "% Diff")) %>%
   kable_styling(full_width = FALSE) %>%
   print()
 
@@ -84,7 +91,8 @@ plot_df <- comparison %>%
 
 bars <- plot_df %>%
   select(sex_label, age_group, MZCR, Eurostat) %>%
-  pivot_longer(cols = c(MZCR, Eurostat), names_to = "series", values_to = "count")
+  pivot_longer(cols = c(MZCR, Eurostat), names_to = "series", values_to = "count") %>%
+  mutate(series = factor(series, levels = c("MZCR", "Eurostat")))
 
 p <- ggplot(bars, aes(x = age_group, y = count, fill = series)) +
   geom_col(position = position_dodge(0.7), width = 0.65) +
@@ -93,7 +101,12 @@ p <- ggplot(bars, aes(x = age_group, y = count, fill = series)) +
   scale_y_continuous(labels = label_number(scale_cut = cut_si(""))) +
   scale_fill_manual(values = c(MZCR = "#2B6CB0", Eurostat = "#9B2C2C"), name = NULL) +
   scale_color_identity() +
-  labs(title = "MZCR Imputed vs Eurostat 2024", x = NULL, y = "Population") +
+  labs(
+    title = "MZCR Imputed vs Eurostat 2024",
+    subtitle = "Using min_age calculation (matching pre-imputation comparison)",
+    x = NULL, 
+    y = "Population"
+  ) +
   theme_minimal(base_size = 13) +
   theme(panel.grid.major.x = element_blank(), legend.position = "top") +
   facet_wrap(~ sex_label, ncol = 1, scales = "free_y")
@@ -103,5 +116,22 @@ print(p)
 dir.create("visual/imputed_vs_eurostat", showWarnings = FALSE, recursive = TRUE)
 ggsave("visual/imputed_vs_eurostat/comparison.png", p, width = 12, height = 9, dpi = 300, bg = "white")
 
-cat("\nTotal by sex:\n")
-comparison %>% group_by(sex_label) %>% summarise(MZCR = sum(MZCR), Eurostat = sum(Eurostat), Diff = sum(Difference)) %>% print()
+cat("\n=== TOTAL BY SEX ===\n")
+totals <- comparison %>% 
+  group_by(sex_label) %>% 
+  summarise(
+    MZCR = sum(MZCR), 
+    Eurostat = sum(Eurostat), 
+    Difference = sum(Difference),
+    Pct_Diff = 100 * Difference / Eurostat
+  )
+print(totals)
+
+cat("\n=== OVERALL TOTAL ===\n")
+overall <- data.frame(
+  MZCR = sum(comparison$MZCR),
+  Eurostat = sum(comparison$Eurostat),
+  Difference = sum(comparison$Difference)
+) %>%
+  mutate(Pct_Diff = 100 * Difference / Eurostat)
+print(overall)

@@ -35,7 +35,7 @@ df <- read.csv(file_path, header = TRUE, stringsAsFactors = FALSE)
 df_aug <- df %>%
   mutate(
     gender = as.character(gender),
-    yob_known_factor = factor(!is.na(year_of_birth_start),
+    yob_known_factor = factor(!is.na(year_of_birth_end),
                               levels = c(FALSE, TRUE),
                               labels = c("Unknown","Known")),
     has_death_factor = factor(has_death,
@@ -57,7 +57,7 @@ weekly_by_age <- df %>%
 
     # Age grouping; use provided age_at_death and fall back to Unknown if YOB missing
     age_group = dplyr::case_when(
-      is.na(year_of_birth_start) ~ "Unknown",
+      is.na(year_of_birth_end) ~ "Unknown",
       !is.na(age_at_death) & age_at_death <= 15 ~ "0–15",
       !is.na(age_at_death) & age_at_death <= 24 ~ "15-24",
       !is.na(age_at_death) & age_at_death <= 49 ~ "25–49",
@@ -70,7 +70,7 @@ weekly_by_age <- df %>%
   ) %>%
   filter(!is.na(week_start)) %>%
   # keep plausible ages when known
-  filter(is.na(year_of_birth_start) | (age_at_death >= 0 & age_at_death <= 110)) %>%
+  filter(is.na(year_of_birth_end) | (age_at_death >= 0 & age_at_death <= 110)) %>%
   mutate(age_group = factor(age_group, levels = age_levels)) %>%
   group_by(week_start, age_group) %>%
   summarise(deaths = n(), .groups = "drop") %>%
