@@ -43,7 +43,7 @@ assign_age_group <- function(age, esp_df) {
 # ============================================================================
 # Load and Prepare Data
 # ============================================================================
-file_path <- "data/mzcr_no_or_first_infection.csv"
+file_path <- "data/mzcr_no_or_first_infection_with_imputation.csv"
 
 if (!file.exists(file_path)) {
   stop("Please run download_and_data_integrity.R first to generate the data file.")
@@ -166,8 +166,8 @@ calculate_asmr_for_week <- function(week_code, data, esp_ref) {
 # ============================================================================
 # Process All Weeks with Pause/Resume
 # ============================================================================
-summary_file <- "data/asmr_esp2013_results_incremental.csv"
-age_file <- "data/asmr_esp2013_age_stratified_incremental.csv"
+summary_file <- "data/asmr_esp2013_results_incremental_with_imputation.csv"
+age_file <- "data/asmr_esp2013_age_stratified_incremental_with_imputation.csv"
 
 # Generate all week codes
 all_week_codes <- c()
@@ -284,12 +284,12 @@ if (length(week_codes) == 0) {
 results <- results %>% filter(!is.na(week)) %>% arrange(date)
 results_nonzero <- results %>% filter(asmr_total > 0)
 
-write.csv(results, "data/asmr_esp2013_results_all.csv", row.names = FALSE)
-write.csv(results_nonzero, "data/asmr_esp2013_results.csv", row.names = FALSE)
-write.csv(age_stratified, "data/asmr_esp2013_age_stratified.csv", row.names = FALSE)
+write.csv(results, "data/asmr_esp2013_results_all_with_imputation.csv", row.names = FALSE)
+write.csv(results_nonzero, "data/asmr_esp2013_results_with_imputation.csv", row.names = FALSE)
+write.csv(age_stratified, "data/asmr_esp2013_age_stratified_with_imputation.csv", row.names = FALSE)
 
 age_stratified_nonzero <- age_stratified %>% filter(week %in% results_nonzero$week)
-write.csv(age_stratified_nonzero, "data/asmr_esp2013_age_stratified_nonzero.csv", row.names = FALSE)
+write.csv(age_stratified_nonzero, "data/asmr_esp2013_age_stratified_nonzero_with_imputation.csv", row.names = FALSE)
 
 cat("\nFiles created:\n")
 cat("  - asmr_esp2013_results.csv (", nrow(results_nonzero), "weeks)\n")
@@ -449,8 +449,8 @@ ggsave("CzMort_ASMR_ESP2013_15plus_ggplot.png", p,
 cat("ggplot saved: CzMort_ASMR_ESP2013_15plus_ggplot.png\n")
 
 # Also save the 15+ data
-write.csv(asmr_15plus, "data/asmr_esp2013_15plus.csv", row.names = FALSE)
-cat("Data saved: data/asmr_esp2013_15plus.csv\n")
+write.csv(asmr_15plus, "data/asmr_esp2013_15plus_with_imputation.csv", row.names = FALSE)
+cat("Data saved: data/asmr_esp2013_15plus_with_imputation.csv\n")
 
 # ============================================================================
 # Summary Statistics
