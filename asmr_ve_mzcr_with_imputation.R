@@ -424,7 +424,7 @@ p <- ggplot(asmr_15plus_long, aes(x = date, y = asmr, color = group)) +
   scale_y_continuous(labels = comma, limits = c(0, NA)) +
   scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
   labs(
-    title = "COVID-19 Mortality in Czechia - Ages 15+ Only",
+    title = "COVID-19 Mortality in Czechia (with imputation) - Ages 15+ Only",
     subtitle = "Age-Standardized Mortality Rate (ESP 2013)",
     x = "Date",
     y = "ASMR per 100,000 per week",
@@ -442,6 +442,7 @@ p <- ggplot(asmr_15plus_long, aes(x = date, y = asmr, color = group)) +
     panel.grid.minor = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
+p
 
 ggsave("CzMort_ASMR_ESP2013_15plus_ggplot.png", p, 
        width = 12, height = 7, dpi = 300, bg = "white")

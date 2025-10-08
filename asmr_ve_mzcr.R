@@ -442,6 +442,7 @@ p <- ggplot(asmr_15plus_long, aes(x = date, y = asmr, color = group)) +
     panel.grid.minor = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
+p
 
 ggsave("CzMort_ASMR_ESP2013_15plus_ggplot.png", p, 
        width = 12, height = 7, dpi = 300, bg = "white")
