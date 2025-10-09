@@ -424,7 +424,7 @@ p <- ggplot(asmr_15plus_long, aes(x = date, y = asmr, color = group)) +
   scale_y_continuous(labels = comma, limits = c(0, NA)) +
   scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
   labs(
-    title = "COVID-19 Mortality in Czechia - Ages 15+ Only",
+    title = "All Causes Mortality in Czechia - Ages 15+ Only",
     subtitle = "Age-Standardized Mortality Rate (ESP 2013)",
     x = "Date",
     y = "ASMR per 100,000 per week",
