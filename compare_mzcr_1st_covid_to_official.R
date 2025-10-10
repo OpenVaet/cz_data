@@ -157,24 +157,78 @@ cmp_long <- cmp %>%
   ) %>%
   tidyr::pivot_longer(-week_date, names_to = "series", values_to = "cases")
 
+# --- Prepare cumulative % of sample (primary infections) --------------------
+n_total <- nrow(df)  # original sample size
+
+cmp_pct <- cmp %>%
+  arrange(week_date) %>%
+  mutate(
+    weeklyInfections = tidyr::replace_na(weeklyInfections, 0L),
+    cum_primary      = cumsum(weeklyInfections),
+    pct_of_sample    = 100 * cum_primary / n_total
+  )
+
+# Scaling: map % to the left y-axis (counts) so we can draw a secondary axis
+y_max_counts <- max(cmp_long$cases, na.rm = TRUE)
+max_pct      <- max(cmp_pct$pct_of_sample, na.rm = TRUE)
+coef <- if (is.finite(y_max_counts) && is.finite(max_pct) && max_pct > 0) y_max_counts / max_pct else 1
+
+pct_line <- cmp_pct %>%
+  transmute(week_date, pct_scaled = pct_of_sample * coef)
+
+# --- Plot: bars (daily aggregated), line (record-level), dashed % line ------
 ggplot(cmp_long, aes(x = week_date, y = cases, group = series)) +
-  geom_col(data = dplyr::filter(cmp_long, series == "Aggregated from daily data"),
-           aes(y = cases), alpha = 0.6) +
-  geom_line(data = dplyr::filter(cmp_long, series == "Record-level dataset (rows = infections)"),
-            linewidth = 1) +
+  geom_col(
+    data = dplyr::filter(cmp_long, series == "Aggregated from daily data"),
+    aes(y = cases, fill = "Aggregated from daily data"),
+    alpha = 0.6
+  ) +
+  geom_line(
+    data = dplyr::filter(cmp_long, series == "Record-level dataset (rows = infections)"),
+    aes(y = cases, color = "Record-level dataset (rows = infections)"),
+    linewidth = 1
+  ) +
+  # dashed cumulative % of sample (right axis)
+  geom_line(
+    data = pct_line,
+    aes(x = week_date,
+        y = pct_scaled,
+        color = "% of sample with ≥1 infection (cumulative)",
+        group = 1),
+    linewidth = 0.9,
+    linetype = "dashed",
+    inherit.aes = FALSE
+  ) +
   scale_x_date(
     breaks = seq(min(cmp_long$week_date, na.rm = TRUE),
                  max(cmp_long$week_date, na.rm = TRUE),
                  by = "8 weeks"),
     labels = function(x) strftime(x, "%G-%V")
   ) +
-  scale_y_continuous(labels = scales::label_number(big.mark = " ")) +
+  scale_y_continuous(
+    labels = scales::label_number(big.mark = " "),
+    sec.axis = sec_axis(~ . / coef, name = "% of sample (cumulative)")
+  ) +
+  scale_fill_discrete(name = NULL) +
+  scale_color_discrete(name = NULL) +
   labs(
-    title = "Czechia — Weekly COVID-19 Primary Cases: Daily Aggregation vs Record-level Dataset",
-    x = "ISO Week (YYYY-WW, Monday)",
-    y = "Cases",
-    caption = "Bars: daily dataset aggregated to ISO weeks. Line: count of rows in record-level dataset by ISO week (DateOfResult preferred)."
+    title   = "Czechia - Weekly COVID-19 Primary Cases: Daily Aggregation vs Record-level Dataset",
+    x       = "ISO Week (YYYY-WW, Monday)",
+    y       = "Cases",
+    caption = paste0(
+      "Bars: daily dataset aggregated to ISO weeks. Line: count of rows in record-level dataset by ISO week. ",
+      "Dashed line (right axis): cumulative % of the population (n=", format(n_total, big.mark = " "), ") with ≥1 infection."
+    )
   ) +
   theme_minimal(base_size = 12) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        panel.grid.minor = element_blank())
+  theme(
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  ) +
+  guides(
+    color = guide_legend(nrow = 1),
+    fill  = guide_legend(nrow = 1)
+  )
+

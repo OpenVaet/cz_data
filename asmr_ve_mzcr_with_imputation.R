@@ -11,9 +11,9 @@ library(ISOweek)
 # ============================================================================
 esp2013 <- tibble(
   age_start = c(0, 1, seq(5, 90, by = 5), 95),
-  age_end = c(0, 4, seq(9, 94, by = 5), 999),
-  esp_pop = c(1000, 4000, 5500, 5500, 5500, 6000, 6000, 6500, 7000, 7000, 
-              7000, 7000, 6500, 6000, 5500, 5000, 4000, 2500, 1500, 800, 200)
+  age_end   = c(0, 4, seq(9, 94, by = 5), 999),
+  esp_pop   = c(1000, 4000, 5500, 5500, 5500, 6000, 6000, 6500, 7000, 7000,
+                7000, 7000, 6500, 6000, 5500, 5000, 4000, 2500, 1500, 800, 200)
 ) %>%
   mutate(
     age_group = paste0(age_start, "-", ifelse(age_end == 999, "95+", age_end)),
@@ -41,7 +41,13 @@ assign_age_group <- function(age, esp_df) {
 }
 
 # ============================================================================
-# Load and Prepare Data
+# Parameters: BASELINE WEEK for inclusion (15+ only)
+# ============================================================================
+baseline_week <- 202013                      # 2020 - week 13
+baseline_date <- yw2date(baseline_week)
+
+# ============================================================================
+# Load and Prepare Data  (EXCLUDE <15 at BASELINE)
 # ============================================================================
 file_path <- "data/mzcr_no_or_first_infection_with_imputation.csv"
 
@@ -52,7 +58,6 @@ if (!file.exists(file_path)) {
 data_raw <- read.csv(file_path, stringsAsFactors = FALSE)
 cat("Raw data dimensions:", nrow(data_raw), "rows x", ncol(data_raw), "columns\n")
 
-# Prepare data
 data <- data_raw %>%
   mutate(
     year_of_birth = as.integer(year_of_birth_end),
@@ -74,102 +79,95 @@ data <- data_raw %>%
     )
   ) %>%
   filter(!is.na(year_of_birth), year_of_birth >= 1900, year_of_birth <= 2024) %>%
+  # EXCLUDE <15 at BASELINE
+  mutate(age_at_baseline = as.integer(lubridate::year(baseline_date) - year_of_birth)) %>%
+  filter(age_at_baseline >= 15, age_at_baseline <= 120) %>%
   select(ID, year_of_birth, dv1, date_positivity, date_death)
 
-cat("Prepared data:\n")
+cat("Prepared data (15+ at baseline):\n")
 cat("  - Rows:", nrow(data), "\n")
 cat("  - Deaths:", sum(!is.na(data$date_death)), "\n")
 cat("  - COVID+ cases:", sum(!is.na(data$date_positivity)), "\n")
 cat("  - Vaccinated:", sum(!is.na(data$dv1)), "\n\n")
 
 # ============================================================================
-# Weekly Mortality Calculation
+# Weekly Mortality Calculation  — export minimal long table
+# One row per week × age_group × (is_vaccinated, is_positive)
 # ============================================================================
-calculate_asmr_for_week <- function(week_code, data, esp_ref) {
+calculate_age_strata_for_week <- function(week_code, data, esp_ref) {
   week_date <- yw2date(week_code)
-  if (is.na(week_date)) return(NULL)
-  
+  if (is.na(week_date) || !inherits(week_date, "Date")) {
+    warning(paste("Invalid week date for week", week_code))
+    return(NULL)
+  }
+
   data_week <- data %>%
     mutate(
-      age_at_week = as.integer(year(week_date) - year_of_birth),
-      is_alive = is.na(date_death) | date_death >= week_date,  # FIXED: >= not >
+      age_at_week   = as.integer(lubridate::year(week_date) - year_of_birth),
+      is_alive      = is.na(date_death) | date_death >= week_date,
       is_vaccinated = !is.na(dv1) & dv1 <= week_code,
-      is_positive = !is.na(date_positivity) & date_positivity <= week_date,
-      died_this_week = !is.na(date_death) & 
-        date_death >= week_date & 
-        date_death < week_date + 7
+      is_positive   = !is.na(date_positivity) & date_positivity <= week_date,
+      died_this_week = !is.na(date_death) &
+        date_death >= week_date &
+        date_death < (week_date + 7)
     ) %>%
-    filter(is_alive, age_at_week >= 0, age_at_week <= 120) %>%
+    filter(is_alive, age_at_week >= 15, age_at_week <= 120) %>%
     mutate(age_group_idx = assign_age_group(age_at_week, esp_ref))
-  
-  counts_by_age <- data_week %>%
+
+  if (nrow(data_week) == 0) {
+    warning(paste("No data for week", week_code))
+    return(NULL)
+  }
+
+  # 4-way stratification (vaccination x positivity) by age
+  counts_by_age_4way <- data_week %>%
     filter(!is.na(age_group_idx)) %>%
     group_by(age_group_idx, is_vaccinated, is_positive) %>%
-    summarise(n_pop = n(), n_deaths = sum(died_this_week), .groups = "drop")
-  
-  results_by_age <- esp_ref %>%
-    mutate(age_group_idx = row_number()) %>%
-    left_join(counts_by_age, by = "age_group_idx") %>%
-    replace_na(list(n_pop = 0, n_deaths = 0, is_vaccinated = FALSE, is_positive = FALSE)) %>%
-    mutate(mortality_rate = if_else(n_pop > 0, (n_deaths / n_pop) * 100000, 0))
-  
-  # Age-stratified detail for export
-  age_detail <- results_by_age %>%
-    mutate(week = week_code, date = week_date) %>%
-    select(week, date, age_group, age_start, age_end, is_vaccinated, is_positive,
-           n_pop, n_deaths, mortality_rate, esp_pop)
-  
-  # Calculate ASMR by subgroup
-  calc_asmr <- function(df, vacc, pos) {
-    df_sub <- df %>% filter(is_vaccinated == vacc, is_positive == pos)
-    if (nrow(df_sub) == 0 || sum(df_sub$n_pop) == 0) {
-      return(tibble(total_pop = 0, total_deaths = 0, asmr = 0))
-    }
-    tibble(
-      total_pop = sum(df_sub$n_pop),
-      total_deaths = sum(df_sub$n_deaths),
-      asmr = sum(df_sub$mortality_rate * df_sub$esp_pop) / sum(df_sub$esp_pop)
+    summarise(
+      n_pop = n(),
+      n_deaths = sum(died_this_week, na.rm = TRUE),
+      .groups = "drop"
     )
-  }
-  
-  vp <- calc_asmr(results_by_age, TRUE, TRUE)
-  vn <- calc_asmr(results_by_age, TRUE, FALSE)
-  sp <- calc_asmr(results_by_age, FALSE, TRUE)
-  sn <- calc_asmr(results_by_age, FALSE, FALSE)
-  
-  # Combined groups
-  v_all <- results_by_age %>% filter(is_vaccinated == TRUE)
-  s_all <- results_by_age %>% filter(is_vaccinated == FALSE)
-  p_all <- results_by_age %>% filter(is_positive == TRUE)
-  n_all <- results_by_age %>% filter(is_positive == FALSE)
-  
-  list(
-    summary = tibble(
-      week = week_code,
-      date = week_date,
-      pop_vp = vp$total_pop, pop_vn = vn$total_pop,
-      pop_sp = sp$total_pop, pop_sn = sn$total_pop,
-      deaths_vp = vp$total_deaths, deaths_vn = vn$total_deaths,
-      deaths_sp = sp$total_deaths, deaths_sn = sn$total_deaths,
-      asmr_vp = vp$asmr, asmr_vn = vn$asmr,
-      asmr_sp = sp$asmr, asmr_sn = sn$asmr,
-      asmr_vaccinated = sum(v_all$mortality_rate * v_all$esp_pop) / sum(v_all$esp_pop),
-      asmr_unvaccinated = sum(s_all$mortality_rate * s_all$esp_pop) / sum(s_all$esp_pop),
-      asmr_positive = sum(p_all$mortality_rate * p_all$esp_pop) / sum(p_all$esp_pop),
-      asmr_negative = sum(n_all$mortality_rate * n_all$esp_pop) / sum(n_all$esp_pop),
-      asmr_total = sum(results_by_age$mortality_rate * results_by_age$esp_pop) / sum(results_by_age$esp_pop)
-    ),
-    age_detail = age_detail
-  )
+
+  # Ensure every age/flag cell exists and join ESP weights
+  fourway_rates <- counts_by_age_4way %>%
+    full_join(
+      expand.grid(
+        age_group_idx = 1:nrow(esp_ref),
+        is_vaccinated = c(TRUE, FALSE),
+        is_positive   = c(TRUE, FALSE)
+      ),
+      by = c("age_group_idx", "is_vaccinated", "is_positive")
+    ) %>%
+    replace_na(list(n_pop = 0, n_deaths = 0)) %>%
+    left_join(esp_ref %>% mutate(age_group_idx = row_number()), by = "age_group_idx")
+
+  # Export minimal long table for downstream ASMR
+  age_detail <- fourway_rates %>%
+    mutate(
+      week      = week_code,
+      date      = week_date,
+      age_group = paste0(age_start, "-", ifelse(age_end == 999, "95+", age_end))
+    ) %>%
+    transmute(
+      week, date,
+      age_group_idx,
+      age_group, age_start, age_end,
+      is_vaccinated, is_positive,
+      n_pop,               # at-risk this week in this cell
+      n_deaths,            # deaths in the 7-day window for this cell
+      esp_pop              # ESP2013 weight for this age cell
+    )
+
+  age_detail
 }
 
 # ============================================================================
-# Process All Weeks with Pause/Resume
+# Process All Weeks with Pause/Resume  — write only the long table
 # ============================================================================
-summary_file <- "data/asmr_esp2013_results_incremental_with_imputation.csv"
 age_file <- "data/asmr_esp2013_age_stratified_incremental_with_imputation.csv"
 
-# Generate all week codes
+# Generate all ISO week codes 2020-2024
 all_week_codes <- c()
 for (year in 2020:2024) {
   for (week in 1:53) {
@@ -177,14 +175,14 @@ for (year in 2020:2024) {
   }
 }
 
-# Check for existing results
+# Check for existing long-table results to support resume
 already_processed <- c()
-if (file.exists(summary_file)) {
-  existing_summary <- read.csv(summary_file, stringsAsFactors = FALSE)
-  already_processed <- unique(existing_summary$week)
-  cat("Found existing results with", length(already_processed), "weeks already processed\n")
+if (file.exists(age_file)) {
+  existing_age <- read.csv(age_file, stringsAsFactors = FALSE)
+  already_processed <- sort(unique(existing_age$week))
+  cat("Found existing age-stratified rows for", length(already_processed), "weeks\n")
 } else {
-  cat("No existing results found - will process all weeks\n")
+  cat("No existing age-stratified file found - will process all weeks\n")
 }
 
 week_codes <- setdiff(all_week_codes, already_processed)
@@ -193,244 +191,276 @@ cat("Already completed:", length(already_processed), "\n")
 cat("Remaining to process:", length(week_codes), "\n\n")
 
 if (length(week_codes) == 0) {
-  cat("All weeks already processed! Loading existing results...\n")
-  results <- read.csv(summary_file, stringsAsFactors = FALSE) %>%
-    mutate(date = as.Date(date))
+  cat("All weeks already processed! Loading existing age-stratified results...\n")
   age_stratified <- read.csv(age_file, stringsAsFactors = FALSE) %>%
     mutate(date = as.Date(date))
 } else {
-  # Test first week if starting fresh
+  # Test first week if starting fresh: just show structure of the long table
   if (length(already_processed) == 0) {
     cat("=== Testing first week ===\n")
-    test_result <- calculate_asmr_for_week(202152, data, esp2013)
-    if (!is.null(test_result)) {
-      cat("Test summary structure:\n")
-      print(str(test_result$summary))
-      cat("\nTest summary data:\n")
-      print(test_result$summary)
-      cat("\nDeath columns (5:8):\n")
-      print(test_result$summary[,5:8])
-      cat("\nSum of death columns:", sum(test_result$summary[,5:8]), "\n")
-      cat("\nIndividual death counts:\n")
-      cat("  deaths_vp:", test_result$summary$deaths_vp, "\n")
-      cat("  deaths_vn:", test_result$summary$deaths_vn, "\n")
-      cat("  deaths_sp:", test_result$summary$deaths_sp, "\n")
-      cat("  deaths_sn:", test_result$summary$deaths_sn, "\n")
-      cat("  TOTAL:", test_result$summary$deaths_vp + test_result$summary$deaths_vn + 
-            test_result$summary$deaths_sp + test_result$summary$deaths_sn, "\n\n")
+    test_age <- calculate_age_strata_for_week(202152, data, esp2013)
+    if (!is.null(test_age)) {
+      cat("Test age_detail structure:\n")
+      print(str(test_age))
+      cat("\nFirst few rows:\n")
+      print(head(test_age))
+      cat("\nTotal deaths in test week:", sum(test_age$n_deaths), "\n")
     } else {
       stop("Test failed")
     }
   }
-  
+
   cat("=== Processing remaining weeks ===\n")
   batch_size <- 10
   n_batches <- ceiling(length(week_codes) / batch_size)
-  
+
   for (batch_idx in 1:n_batches) {
     start_idx <- (batch_idx - 1) * batch_size + 1
-    end_idx <- min(batch_idx * batch_size, length(week_codes))
+    end_idx   <- min(batch_idx * batch_size, length(week_codes))
     batch_weeks <- week_codes[start_idx:end_idx]
-    
-    cat(sprintf("Batch %d/%d: Weeks %s to %s... ", 
+
+    cat(sprintf("Batch %d/%d: Weeks %s to %s... ",
                 batch_idx, n_batches, batch_weeks[1], batch_weeks[length(batch_weeks)]))
-    
-    # Parallel processing
+
     n_cores <- max(1, detectCores() - 1)
-    
+
     if (.Platform$OS.type == "windows") {
       cl <- makeCluster(n_cores)
-      clusterExport(cl, c("data", "esp2013", "calculate_asmr_for_week", 
-                          "yw2date", "assign_age_group"), envir = environment())
+      clusterExport(cl, c("data","esp2013","calculate_age_strata_for_week",
+                          "yw2date","assign_age_group"),
+                    envir = environment())
       clusterEvalQ(cl, {
-        library(dplyr); library(tibble); library(tidyr); library(lubridate); library(ISOweek)
+        library(dplyr); library(tibble); library(tidyr);
+        library(lubridate); library(ISOweek)
       })
-      batch_results <- parLapply(cl, batch_weeks, calculate_asmr_for_week,
-                                 data = data, esp_ref = esp2013)
+      batch_results <- parLapply(
+        cl, batch_weeks, calculate_age_strata_for_week,
+        data = data, esp_ref = esp2013
+      )
       stopCluster(cl)
     } else {
-      batch_results <- mclapply(batch_weeks, calculate_asmr_for_week,
-                                data = data, esp_ref = esp2013, mc.cores = n_cores)
+      batch_results <- mclapply(
+        batch_weeks, calculate_age_strata_for_week,
+        data = data, esp_ref = esp2013,
+        mc.cores = n_cores
+      )
     }
-    
-    # Extract and save
-    batch_summary <- bind_rows(lapply(batch_results, function(x) if (!is.null(x)) x$summary else NULL))
-    batch_age <- bind_rows(lapply(batch_results, function(x) if (!is.null(x)) x$age_detail else NULL))
-    
-    if (file.exists(summary_file)) {
-      write.table(batch_summary, summary_file, sep = ",", append = TRUE, 
-                  row.names = FALSE, col.names = FALSE)
-      write.table(batch_age, age_file, sep = ",", append = TRUE, 
+
+    batch_age <- bind_rows(batch_results)
+
+    if (file.exists(age_file)) {
+      write.table(batch_age, age_file, sep = ",", append = TRUE,
                   row.names = FALSE, col.names = FALSE)
     } else {
-      write.csv(batch_summary, summary_file, row.names = FALSE)
       write.csv(batch_age, age_file, row.names = FALSE)
     }
-    
-    cat(sprintf("✓ Deaths: %d\n", sum(batch_summary$deaths_vp + batch_summary$deaths_vn + 
-                                        batch_summary$deaths_sp + batch_summary$deaths_sn)))
+
+    cat(sprintf("✓ Deaths in batch: %d\n", sum(batch_age$n_deaths)))
   }
-  
-  cat("\nProcessing complete! Loading results...\n")
-  results <- read.csv(summary_file, stringsAsFactors = FALSE) %>%
-    mutate(date = as.Date(date))
-  age_stratified <- read.csv(age_file, stringsAsFactors = FALSE) %>%
-    mutate(date = as.Date(date))
+
+  cat("\nProcessing complete! Loading age-stratified results...\n")
+
+  age_stratified_raw <- read.csv(age_file, stringsAsFactors = FALSE)
+  age_stratified <- age_stratified_raw %>%
+    mutate(date = as.Date(as.character(date)))
 }
 
 # ============================================================================
-# Save Final Results
+# Save Final Results (single canonical export)
 # ============================================================================
-results <- results %>% filter(!is.na(week)) %>% arrange(date)
-results_nonzero <- results %>% filter(asmr_total > 0)
+age_stratified <- age_stratified %>%
+  filter(!is.na(week)) %>%
+  arrange(date, age_group_idx, is_vaccinated, is_positive)
 
-write.csv(results, "data/asmr_esp2013_results_all_with_imputation.csv", row.names = FALSE)
-write.csv(results_nonzero, "data/asmr_esp2013_results_with_imputation.csv", row.names = FALSE)
-write.csv(age_stratified, "data/asmr_esp2013_age_stratified_with_imputation.csv", row.names = FALSE)
-
-age_stratified_nonzero <- age_stratified %>% filter(week %in% results_nonzero$week)
-write.csv(age_stratified_nonzero, "data/asmr_esp2013_age_stratified_nonzero_with_imputation.csv", row.names = FALSE)
+write.csv(
+  age_stratified,
+  "data/asmr_esp2013_age_stratified_with_imputation.csv",
+  row.names = FALSE
+)
 
 cat("\nFiles created:\n")
-cat("  - asmr_esp2013_results.csv (", nrow(results_nonzero), "weeks)\n")
-cat("  - asmr_esp2013_age_stratified.csv (", nrow(age_stratified), "rows)\n")
+cat("  - asmr_esp2013_age_stratified_with_imputation.csv (",
+    nrow(age_stratified), "rows)\n")
 
-# ============================================================================
-# Create Plots
-# ============================================================================
-w <- 800; h <- 600
-plot_data <- results_nonzero
-
-png("CzMort_ASMR_ESP2013.png", width = w, height = h)
-par(mar = c(5, 5, 4, 2), cex = 1.2)
-ymax <- max(plot_data$asmr_total, plot_data$asmr_vaccinated, plot_data$asmr_unvaccinated, na.rm = TRUE)
-plot(plot_data$date, plot_data$asmr_total, ylim = c(0, ymax), type = "l", col = "black", lwd = 2,
-     xlab = "Date", ylab = "ASMR per 100,000/week (ESP 2013)",
-     main = "COVID-19 Mortality in Czechia (ESP 2013)")
-lines(plot_data$date, plot_data$asmr_vaccinated, col = "red", lwd = 2)
-lines(plot_data$date, plot_data$asmr_unvaccinated, col = "green", lwd = 2)
-legend("topright", c("Overall", "Vaccinated", "Unvaccinated"),
-       col = c("black", "red", "green"), lty = 1, lwd = 2, bg = "white")
-dev.off()
-
-png("CzMortUnvax_ASMR_ESP2013.png", width = w, height = h)
-par(mar = c(5, 5, 4, 2), cex = 1.2)
-ymax <- max(plot_data$asmr_unvaccinated, plot_data$asmr_sp, plot_data$asmr_sn, na.rm = TRUE)
-plot(plot_data$date, plot_data$asmr_unvaccinated, ylim = c(0, ymax), type = "l", col = "black", lwd = 2,
-     xlab = "Date", ylab = "ASMR per 100,000/week (ESP 2013)",
-     main = "Unvaccinated Mortality in Czechia")
-lines(plot_data$date, plot_data$asmr_sp, col = "red", lwd = 2)
-lines(plot_data$date, plot_data$asmr_sn, col = "green", lwd = 2)
-legend("topright", c("Unvaccinated overall", "Unvaccinated COVID+", "Unvaccinated COVID-"),
-       col = c("black", "red", "green"), lty = 1, lwd = 2, bg = "white")
-dev.off()
-
-png("CzMortVax_ASMR_ESP2013.png", width = w, height = h)
-par(mar = c(5, 5, 4, 2), cex = 1.2)
-ymax <- max(plot_data$asmr_vaccinated, plot_data$asmr_vp, plot_data$asmr_vn, na.rm = TRUE)
-plot(plot_data$date, plot_data$asmr_vaccinated, ylim = c(0, ymax), type = "l", col = "black", lwd = 2,
-     xlab = "Date", ylab = "ASMR per 100,000/week (ESP 2013)",
-     main = "Vaccinated Mortality in Czechia")
-lines(plot_data$date, plot_data$asmr_vp, col = "red", lwd = 2)
-lines(plot_data$date, plot_data$asmr_vn, col = "green", lwd = 2)
-legend("topright", c("Vaccinated overall", "Vaccinated COVID+", "Vaccinated COVID-"),
-       col = c("black", "red", "green"), lty = 1, lwd = 2, bg = "white")
-dev.off()
-
-png("CzMortPos_ASMR_ESP2013.png", width = w, height = h)
-par(mar = c(5, 5, 4, 2), cex = 1.2)
-ymax <- max(plot_data$asmr_positive, plot_data$asmr_vp, plot_data$asmr_sp, na.rm = TRUE)
-plot(plot_data$date, plot_data$asmr_positive, ylim = c(0, ymax), type = "l", col = "black", lwd = 2,
-     xlab = "Date", ylab = "ASMR per 100,000/week (ESP 2013)",
-     main = "COVID+ Mortality in Czechia")
-lines(plot_data$date, plot_data$asmr_vp, col = "red", lwd = 2)
-lines(plot_data$date, plot_data$asmr_sp, col = "green", lwd = 2)
-legend("topright", c("COVID+ overall", "Vaccinated COVID+", "Unvaccinated COVID+"),
-       col = c("black", "red", "green"), lty = 1, lwd = 2, bg = "white")
-dev.off()
-
-png("CzMortNeg_ASMR_ESP2013.png", width = w, height = h)
-par(mar = c(5, 5, 4, 2), cex = 1.2)
-ymax <- max(plot_data$asmr_negative, plot_data$asmr_vn, plot_data$asmr_sn, na.rm = TRUE)
-plot(plot_data$date, plot_data$asmr_negative, ylim = c(0, ymax), type = "l", col = "black", lwd = 2,
-     xlab = "Date", ylab = "ASMR per 100,000/week (ESP 2013)",
-     main = "COVID- Mortality in Czechia")
-lines(plot_data$date, plot_data$asmr_vn, col = "red", lwd = 2)
-lines(plot_data$date, plot_data$asmr_sn, col = "green", lwd = 2)
-legend("topright", c("COVID- overall", "Vaccinated COVID-", "Unvaccinated COVID-"),
-       col = c("black", "red", "green"), lty = 1, lwd = 2, bg = "white")
-dev.off()
-
-cat("\nPlots created (5 PNG files)\n")
-
-# ============================================================================
-# Additional ggplot: ASMR 15+ only
-# ============================================================================
+# =============================================================================
+# Rebuild weekly summaries from the long table (age_stratified)
+# =============================================================================
+library(dplyr)
+library(tidyr)
 library(ggplot2)
 library(scales)
+library(lubridate)
 
-cat("\n=== Creating ggplot for ages 15+ ===\n")
+# Helper to compute ASMR from an age-level table with n_pop, n_deaths, esp_pop
+asmr_from_age <- function(df_age) {
+  # df_age must have: n_pop, n_deaths, esp_pop for a single (week, stratum)
+  # compute age-specific rates, then ESP-weighted sum
+  df_age %>%
+    mutate(age_rate = if_else(n_pop > 0, (n_deaths / n_pop) * 100000, 0)) %>%
+    summarise(asmr = sum(age_rate * esp_pop, na.rm = TRUE) / sum(esp_pop, na.rm = TRUE),
+              .groups = "drop") %>%
+    pull(asmr)
+}
 
-# Recalculate ASMR excluding under-15s
-age_15plus <- age_stratified_nonzero %>%
-  filter(age_start >= 15)
-
-cat("Age groups included (15+):", length(unique(age_15plus$age_group)), "\n")
-
-# Recalculate weekly ASMR for 15+ only
-asmr_15plus <- age_15plus %>%
-  group_by(week, date) %>%
+# 1) Core four-way tallies by week (vacc x pos), aggregated over age
+fourway_week <- age_stratified %>%
+  group_by(week, date, is_vaccinated, is_positive) %>%
   summarise(
-    # Vaccinated
-    pop_v = sum(n_pop[is_vaccinated == TRUE]),
-    deaths_v = sum(n_deaths[is_vaccinated == TRUE]),
-    asmr_v = sum(mortality_rate[is_vaccinated == TRUE] * esp_pop[is_vaccinated == TRUE]) / 
-      sum(esp_pop[is_vaccinated == TRUE]),
-    
-    # Unvaccinated
-    pop_s = sum(n_pop[is_vaccinated == FALSE]),
-    deaths_s = sum(n_deaths[is_vaccinated == FALSE]),
-    asmr_s = sum(mortality_rate[is_vaccinated == FALSE] * esp_pop[is_vaccinated == FALSE]) / 
-      sum(esp_pop[is_vaccinated == FALSE]),
-    
-    # Overall
-    pop_total = sum(n_pop),
-    deaths_total = sum(n_deaths),
-    asmr_total = sum(mortality_rate * esp_pop) / sum(esp_pop),
-    
+    pop = sum(n_pop, na.rm = TRUE),
+    deaths = sum(n_deaths, na.rm = TRUE),
     .groups = "drop"
+  )
+
+# Convenience wide layout for populations and deaths (vp, vn, sp, sn)
+fourway_wide <- fourway_week %>%
+  mutate(label = paste0(if_else(is_vaccinated, "v", "s"),
+                        if_else(is_positive, "p", "n"))) %>%  # v=vac, s=unvac; p=pos, n=neg
+  select(week, date, label, pop, deaths) %>%
+  pivot_wider(
+    names_from = label,
+    values_from = c(pop, deaths),
+    values_fill = 0
+  )
+
+# 2) Vaccination-only population (sums over positivity)
+pop_vacc <- age_stratified %>%
+  group_by(week, date, is_vaccinated) %>%
+  summarise(pop = sum(n_pop, na.rm = TRUE), .groups = "drop") %>%
+  mutate(label = if_else(is_vaccinated, "pop_vaccinated", "pop_unvaccinated")) %>%
+  select(-is_vaccinated) %>%
+  pivot_wider(names_from = label, values_from = pop, values_fill = 0)
+
+# 3) Total population (sums over both dimensions)
+pop_total <- age_stratified %>%
+  group_by(week, date) %>%
+  summarise(pop_total = sum(n_pop, na.rm = TRUE), .groups = "drop")
+
+# 4) Compute ASMRs (overall, vaccinated-only, unvaccinated-only) per week
+#    Do this by computing age-specific rates then ESP-weighted sums.
+
+# Overall ASMR (aggregate across both flags, per age)
+asmr_overall <- age_stratified %>%
+  group_by(week, date, age_group_idx, esp_pop) %>%
+  summarise(n_pop = sum(n_pop, na.rm = TRUE),
+            n_deaths = sum(n_deaths, na.rm = TRUE),
+            .groups = "drop_last") %>%
+  group_split(week, date) %>%
+  lapply(function(df) {
+    tibble(
+      week = df$week[1],
+      date = df$date[1],
+      asmr_total = asmr_from_age(df)
+    )
+  }) %>% bind_rows()
+
+# Vaccinated-only ASMR (sum over positivity, restrict to vaccinated)
+asmr_vacc <- age_stratified %>%
+  filter(is_vaccinated) %>%
+  group_by(week, date, age_group_idx, esp_pop) %>%
+  summarise(n_pop = sum(n_pop, na.rm = TRUE),
+            n_deaths = sum(n_deaths, na.rm = TRUE),
+            .groups = "drop_last") %>%
+  group_split(week, date) %>%
+  lapply(function(df) {
+    tibble(
+      week = df$week[1],
+      date = df$date[1],
+      asmr_vaccinated = asmr_from_age(df)
+    )
+  }) %>% bind_rows()
+
+# Unvaccinated-only ASMR (sum over positivity, restrict to unvaccinated)
+asmr_unvacc <- age_stratified %>%
+  filter(!is_vaccinated) %>%
+  group_by(week, date, age_group_idx, esp_pop) %>%
+  summarise(n_pop = sum(n_pop, na.rm = TRUE),
+            n_deaths = sum(n_deaths, na.rm = TRUE),
+            .groups = "drop_last") %>%
+  group_split(week, date) %>%
+  lapply(function(df) {
+    tibble(
+      week = df$week[1],
+      date = df$date[1],
+      asmr_unvaccinated = asmr_from_age(df)
+    )
+  }) %>% bind_rows()
+
+# 5) Assemble the results table equivalent to the old "results"
+results <- fourway_wide %>%
+  left_join(pop_vacc, by = c("week","date")) %>%
+  left_join(pop_total, by = c("week","date")) %>%
+  left_join(asmr_overall, by = c("week","date")) %>%
+  left_join(asmr_vacc, by = c("week","date")) %>%
+  left_join(asmr_unvacc, by = c("week","date")) %>%
+  # Rename four-way columns to match old naming (vp,vn,sp,sn)
+  transmute(
+    week, date,
+    pop_vp = pop_vp, pop_vn = pop_vn, pop_sp = pop_sp, pop_sn = pop_sn,
+    deaths_vp = deaths_vp, deaths_vn = deaths_vn, deaths_sp = deaths_sp, deaths_sn = deaths_sn,
+    asmr_total, asmr_vaccinated, asmr_unvaccinated,
+    pop_vaccinated, pop_unvaccinated, pop_total
   ) %>%
-  filter(asmr_total > 0)
+  arrange(date)
 
-cat("Weeks with data (15+ only):", nrow(asmr_15plus), "\n")
-cat("Total deaths (15+ only):", sum(asmr_15plus$deaths_total), "\n")
+results_nonzero <- results %>% filter(asmr_total > 0)
 
-# Reshape for ggplot
-asmr_15plus_long <- asmr_15plus %>%
-  select(date, asmr_total, asmr_v, asmr_s) %>%
-  pivot_longer(cols = starts_with("asmr_"), 
-               names_to = "group", 
+# =============================================================================
+# Sanity Check
+# =============================================================================
+# After calculating results, add validation
+results_check <- results %>%
+  mutate(
+    vacc_proportion = if_else(pop_total > 0, pop_vaccinated / pop_total, NA_real_),
+    unvacc_proportion = if_else(pop_total > 0, pop_unvaccinated / pop_total, NA_real_)
+  )
+
+# Plot to verify population dynamics
+ggplot(results_check, aes(x = date)) +
+  geom_line(aes(y = vacc_proportion, color = "Vaccinated")) +
+  geom_line(aes(y = unvacc_proportion, color = "Unvaccinated")) +
+  labs(title = "Population Proportions Over Time",
+       y = "Proportion of Total Population",
+       color = NULL) +
+  theme_minimal(base_size = 14)
+
+pop_summary <- results %>%
+  group_by(year = year(date)) %>%
+  summarise(
+    min_unvacc_pop = min(pop_unvaccinated, na.rm = TRUE),
+    max_unvacc_pop = max(pop_unvaccinated, na.rm = TRUE),
+    mean_vacc_proportion = mean(pop_vaccinated / pop_total, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# =============================================================================
+# ggplot (dataset is already 15+, so no need to re-filter)
+# =============================================================================
+cat("\n=== Creating ggplot (15+ dynamic denominators) ===\n")
+
+asmr_for_plot <- results_nonzero %>%
+  select(date, asmr_total, asmr_vaccinated, asmr_unvaccinated) %>%
+  rename(asmr_v = asmr_vaccinated, asmr_s = asmr_unvaccinated) %>%
+  pivot_longer(cols = starts_with("asmr_"),
+               names_to = "group",
                values_to = "asmr") %>%
   mutate(group = factor(group,
-                        levels = c("asmr_total", "asmr_v", "asmr_s"),
-                        labels = c("Overall (15+)", "Vaccinated (15+)", "Unvaccinated (15+)")))
+                        levels = c("asmr_total","asmr_v","asmr_s"),
+                        labels = c("Overall (15+)","Vaccinated (15+)","Unvaccinated (15+)")))
 
-# Create ggplot
-p <- ggplot(asmr_15plus_long, aes(x = date, y = asmr, color = group)) +
+p <- ggplot(asmr_for_plot, aes(x = date, y = asmr, color = group)) +
   geom_line(linewidth = 1.2) +
-  scale_color_manual(values = c("Overall (15+)" = "black", 
-                                "Vaccinated (15+)" = "#D55E00", 
+  scale_color_manual(values = c("Overall (15+)" = "black",
+                                "Vaccinated (15+)" = "#D55E00",
                                 "Unvaccinated (15+)" = "#009E73")) +
   scale_y_continuous(labels = comma, limits = c(0, NA)) +
   scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
   labs(
-    title = "All Causes Mortality in Czechia (with imputation) - Ages 15+ Only",
-    subtitle = "Age-Standardized Mortality Rate (ESP 2013)",
+    title = "All-Cause Mortality in Czechia (with imputation) — Ages 15+",
+    subtitle = "Age-Standardized Mortality Rate (ESP 2013), dynamic denominators",
     x = "Date",
     y = "ASMR per 100,000 per week",
     color = "Group",
-    caption = paste0("Data: Czech Ministry of Health | Analysis excludes ages 0-14\n",
-                     "Total deaths (15+): ", format(sum(asmr_15plus$deaths_total), big.mark = ","))
+    caption = "Data: Czech Ministry of Health | Rates standardized to ESP 2013; denominators update weekly based on actual population"
   ) +
   theme_minimal(base_size = 14) +
   theme(
@@ -442,27 +472,47 @@ p <- ggplot(asmr_15plus_long, aes(x = date, y = asmr, color = group)) +
     panel.grid.minor = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
+
 p
 
-ggsave("CzMort_ASMR_ESP2013_15plus_ggplot.png", p, 
+# Save figures
+ggsave("CzMort_ASMR_ESP2013_15plus_dynamic_denominators.png", p,
+       width = 12, height = 7, dpi = 300, bg = "white")
+
+ggsave("CzMort_ASMR_ESP2013_15plus_ggplot.png", p,
        width = 12, height = 7, dpi = 300, bg = "white")
 
 cat("ggplot saved: CzMort_ASMR_ESP2013_15plus_ggplot.png\n")
 
-# Also save the 15+ data
+# =============================================================================
+# Also save a compact 15+ dataset (now fully populated from long table)
+# =============================================================================
+asmr_15plus <- results_nonzero %>%
+  transmute(
+    week, date,
+    pop_v = pop_vaccinated,
+    pop_s = pop_unvaccinated,
+    deaths_v = deaths_vp + deaths_vn,  # vaccinated deaths (sum over positivity)
+    deaths_s = deaths_sp + deaths_sn,  # unvaccinated deaths
+    asmr_total,
+    asmr_v = asmr_vaccinated,
+    asmr_s = asmr_unvaccinated
+  )
+
 write.csv(asmr_15plus, "data/asmr_esp2013_15plus_with_imputation.csv", row.names = FALSE)
 cat("Data saved: data/asmr_esp2013_15plus_with_imputation.csv\n")
 
-# ============================================================================
+# =============================================================================
 # Summary Statistics
-# ============================================================================
-cat("\n=== Summary Statistics ===\n")
+# =============================================================================
+cat("\n=== Summary Statistics (15+) ===\n")
 cat("Total weeks:", nrow(results), "\n")
 cat("Weeks with deaths:", nrow(results_nonzero), "\n")
 cat("Date range:", min(results_nonzero$date), "to", max(results_nonzero$date), "\n\n")
 
-total_deaths <- sum(results_nonzero$deaths_vp) + sum(results_nonzero$deaths_vn) + 
+total_deaths <- sum(results_nonzero$deaths_vp) + sum(results_nonzero$deaths_vn) +
   sum(results_nonzero$deaths_sp) + sum(results_nonzero$deaths_sn)
+
 cat("Total deaths:", total_deaths, "\n")
 cat("  Vaccinated & COVID+:", sum(results_nonzero$deaths_vp), "\n")
 cat("  Vaccinated & COVID-:", sum(results_nonzero$deaths_vn), "\n")
