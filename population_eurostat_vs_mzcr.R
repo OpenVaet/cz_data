@@ -376,7 +376,7 @@ out_tbl_bins_sex <- dplyr::full_join(
 knitr::kable(
   out_tbl_bins_sex %>%
     dplyr::select(sex_label, `Age Group`, `MZCR Min. Age`, `EuroStat 2024`, `Diff (Min - EU)`),
-  caption = "Czechia — MZCR (Min Age) vs Eurostat 2024 by custom age bands and sex"
+  caption = "Czechia — MZCR (Min Age) vs Eurostat 2024"
 ) %>%
   kableExtra::kable_styling(full_width = FALSE)
 
@@ -415,7 +415,7 @@ p_comp_bins_sex <- ggplot(bars_df_bins_sex, aes(x = `Age Group`, y = count, fill
   ) +
   scale_color_identity() +
   labs(
-    title = "Czechia — MZCR (Min Age) vs Eurostat 2024 by custom age bands",
+    title = "Czechia — MZCR (Min Age) vs Eurostat 2024",
     subtitle = "Faceted by sex. Label = MZCR Min. Age − Eurostat 2024 (green = positive, black = negative)",
     x = NULL, y = "Population"
   ) +

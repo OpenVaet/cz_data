@@ -75,43 +75,30 @@ eu_w <- eu2_cz %>%
   ) %>%
   filter(!is.na(week_start))
 
-# --- Rebin to: 0–15, 15–24, 25–49, 50–59, 60–69, 70–79, 80+ (+ Unknown) ---
-# Direct mappings (everything except the split band Y15-19)
-eu_main <- eu_w %>%
-  filter(age_code != "Y15-19") %>%
+# --- Rebin to: 0–14, 15–24, 25–49, 50–59, 60–69, 70–79, 80+ (+ Unknown) ---
+eu_rebinned <- eu_w %>%
   mutate(
     age_group = case_when(
-      age_code %in% c("Y_LT5","Y5-9","Y10-14") ~ "0–15",
-      age_code == "Y20-24"                      ~ "15–24",
+      age_code %in% c("Y_LT5","Y5-9","Y10-14") ~ "0–14",
+      age_code %in% c("Y15-19","Y20-24")       ~ "15–24",
       age_code %in% c("Y25-29","Y30-34","Y35-39","Y40-44","Y45-49") ~ "25–49",
-      age_code %in% c("Y50-54","Y55-59")        ~ "50–59",
-      age_code %in% c("Y60-64","Y65-69")        ~ "60–69",
-      age_code %in% c("Y70-74","Y75-79")        ~ "70–79",
+      age_code %in% c("Y50-54","Y55-59")       ~ "50–59",
+      age_code %in% c("Y60-64","Y65-69")       ~ "60–69",
+      age_code %in% c("Y70-74","Y75-79")       ~ "70–79",
       age_code %in% c("Y80-84","Y85-89","Y_GE90") ~ "80+",
-      age_code == "UNK"                         ~ "Unknown",
-      TRUE                                      ~ NA_character_
+      age_code == "UNK"                        ~ "Unknown",
+      TRUE                                     ~ NA_character_
     )
   ) %>%
   filter(!is.na(age_group)) %>%
   select(week_start, age_group, value)
 
-# Split Y15-19 across 0–15 (1/5) and 15–24 (4/5)
-eu_split <- eu_w %>%
-  filter(age_code == "Y15-19") %>%
-  transmute(
-    week_start,
-    `0–15`  = value * 1/5,
-    `15–24` = value * 4/5
-  ) %>%
-  pivot_longer(cols = c(`0–15`, `15–24`),
-               names_to = "age_group", values_to = "value")
+age_levels_custom <- c("Unknown","0–14","15–24","25–49","50–59","60–69","70–79","80+")
 
-# Combine and aggregate
-age_levels_custom <- c("Unknown","0–15","15–24","25–49","50–59","60–69","70–79","80+")
-weekly_by_age_eu <- bind_rows(eu_main, eu_split) %>%
+weekly_by_age_eu <- eu_rebinned %>%
   group_by(week_start, age_group) %>%
   summarise(deaths = sum(value, na.rm = TRUE), .groups = "drop") %>%
-  complete(week_start, age_group, fill = list(deaths = 0)) %>%
+  tidyr::complete(week_start, age_group, fill = list(deaths = 0)) %>%
   mutate(age_group = factor(age_group, levels = age_levels_custom)) %>%
   arrange(week_start, age_group) %>%
   # Truncate to ISO years 2020–2024
@@ -120,11 +107,11 @@ weekly_by_age_eu <- bind_rows(eu_main, eu_split) %>%
   select(-iso_year)
 
 # --- Palette: Unknown darkest; younger → older gets lighter, 80+ lightest ---
-pal_base <- brewer.pal(9, "Blues")             # light → dark
+pal_base <- RColorBrewer::brewer.pal(9, "Blues")  # light → dark
 ramp <- colorRampPalette(pal_base)(length(age_levels_custom) - 1)
 fill_vals_eu <- c(
   "Unknown" = pal_base[9],
-  setNames(rev(ramp), age_levels_custom[-1])   # youngest dark → oldest light
+  setNames(rev(ramp), age_levels_custom[-1])      # youngest dark → oldest light
 )
 
 # --- Plot (same style as your other chart) ---

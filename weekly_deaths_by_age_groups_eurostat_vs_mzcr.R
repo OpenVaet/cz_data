@@ -50,7 +50,7 @@ df_aug <- df %>%
 # -------------------------------------------------------------------
 # Weekly deaths by age group
 # -------------------------------------------------------------------
-age_levels <- c("Unknown","0–15","15-24","25–49","50–59","60–69","70–79","80+")
+age_levels <- c("Unknown", "0–14", "15–24", "25–49", "50–59", "60–69", "70–79", "80+")
 
 weekly_mzcr <- df %>%
   # rely on precomputed has_death + week_date_of_death
@@ -60,17 +60,18 @@ weekly_mzcr <- df %>%
     iso_year   = suppressWarnings(as.integer(format(week_start, "%G"))),
 
     # Age grouping; use provided age_at_death and fall back to Unknown if YOB missing
-    age_group = dplyr::case_when(
+    age_group = case_when(
       is.na(year_of_birth_end) ~ "Unknown",
-      !is.na(age_at_death) & age_at_death <= 15 ~ "0–15",
-      !is.na(age_at_death) & age_at_death <= 24 ~ "15-24",
-      !is.na(age_at_death) & age_at_death <= 49 ~ "25–49",
-      !is.na(age_at_death) & age_at_death <= 59 ~ "50–59",
-      !is.na(age_at_death) & age_at_death <= 69 ~ "60–69",
-      !is.na(age_at_death) & age_at_death <= 79 ~ "70–79",
-      !is.na(age_at_death) & age_at_death > 79  ~ "80+",
+      age_at_death <= 14 ~ "0–14",
+      age_at_death <= 24 ~ "15–24",
+      age_at_death <= 49 ~ "25–49",
+      age_at_death <= 59 ~ "50–59",
+      age_at_death <= 69 ~ "60–69",
+      age_at_death <= 79 ~ "70–79",
+      age_at_death > 79  ~ "80+",
       TRUE ~ "Unknown"
     )
+
   ) %>%
   filter(!is.na(week_start)) %>%
   # keep plausible ages when known
@@ -134,46 +135,35 @@ eu_w <- eu2_cz %>%
   ) %>%
   filter(!is.na(week_start))
 
-# Rebin Eurostat to custom buckets (split 15–19 => 1/5 to 0–15, 4/5 to 15-24)
-eu_main <- eu_w %>%
-  filter(age_code != "Y15-19") %>%
+# Rebin Eurostat to custom age buckets: 0–14, 15–24, 25–49, 50–59, 60–69, 70–79, 80+, Unknown
+eu_rebinned <- eu_w %>%
   mutate(
     age_group = case_when(
-      age_code %in% c("Y_LT5","Y5-9","Y10-14") ~ "0–15",
-      age_code == "Y20-24"                      ~ "15-24",
-      age_code %in% c("Y25-29","Y30-34","Y35-39","Y40-44","Y45-49") ~ "25–49",
-      age_code %in% c("Y50-54","Y55-59")        ~ "50–59",
-      age_code %in% c("Y60-64","Y65-69")        ~ "60–69",
-      age_code %in% c("Y70-74","Y75-79")        ~ "70–79",
-      age_code %in% c("Y80-84","Y85-89","Y_GE90") ~ "80+",
-      age_code == "UNK"                         ~ "Unknown",
-      TRUE ~ NA_character_
+      age_code %in% c("Y_LT5", "Y5-9", "Y10-14")                 ~ "0–14",
+      age_code %in% c("Y15-19", "Y20-24")                         ~ "15–24",
+      age_code %in% c("Y25-29", "Y30-34", "Y35-39", "Y40-44", "Y45-49") ~ "25–49",
+      age_code %in% c("Y50-54", "Y55-59")                         ~ "50–59",
+      age_code %in% c("Y60-64", "Y65-69")                         ~ "60–69",
+      age_code %in% c("Y70-74", "Y75-79")                         ~ "70–79",
+      age_code %in% c("Y80-84", "Y85-89", "Y_GE90")               ~ "80+",
+      age_code == "UNK"                                           ~ "Unknown",
+      TRUE                                                        ~ NA_character_
     )
   ) %>%
   filter(!is.na(age_group)) %>%
   select(week_start, age_group, value)
 
-eu_split <- eu_w %>%
-  filter(age_code == "Y15-19") %>%
-  transmute(
-    week_start,
-    `0–15`  = value * 1/5,
-    `15-24` = value * 4/5
-  ) %>%
-  pivot_longer(cols = c(`0–15`, `15-24`), names_to = "age_group", values_to = "value")
-
-weekly_eu <- bind_rows(eu_main, eu_split) %>%
+weekly_eu <- eu_rebinned %>%
   group_by(week_start, age_group) %>%
   summarise(deaths = sum(value, na.rm = TRUE), .groups = "drop") %>%
   complete(week_start, age_group, fill = list(deaths = 0)) %>%
   mutate(
     age_group = factor(age_group, levels = age_levels),
-    source = "Eurostat"
+    iso_year = as.integer(format(week_start, "%G"))
   ) %>%
-  # Truncate to ISO years 2020–2024
-  mutate(iso_year = as.integer(format(week_start, "%G"))) %>%
   filter(iso_year >= 2020, iso_year <= 2024) %>%
   select(-iso_year)
+
 
 # ================================================================
 # Global deaths comparison (total across all age groups)
@@ -264,8 +254,8 @@ cat("\n=== Global deaths comparison plot created ===\n\n")
 pal8_blues <- brewer.pal(8, "Blues")  # light → dark
 fill_blues <- c(
   "Unknown" = pal8_blues[8],
-  "0–15"    = pal8_blues[7],
-  "15-24"   = pal8_blues[6],
+  "0–14"    = pal8_blues[7],
+  "15–24"   = pal8_blues[6],
   "25–49"   = pal8_blues[5],
   "50–59"   = pal8_blues[4],
   "60–69"   = pal8_blues[3],
@@ -273,11 +263,12 @@ fill_blues <- c(
   "80+"     = pal8_blues[1]
 )
 
+
 pal8_reds <- brewer.pal(8, "Reds")    # light → dark
 fill_reds <- c(
   "Unknown" = pal8_reds[8],
-  "0–15"    = pal8_reds[7],
-  "15-24"   = pal8_reds[6],
+  "0–14"    = pal8_reds[7],
+  "15–24"   = pal8_reds[6],
   "25–49"   = pal8_reds[5],
   "50–59"   = pal8_reds[4],
   "60–69"   = pal8_reds[3],
@@ -352,7 +343,7 @@ weekly_eu <- weekly_eu %>%
   dplyr::filter(dplyr::between(week_start, range_start, range_end))
 
 # Combine both sources, keeping shared age levels and 2020–2024 truncation already applied
-age_levels_combined <- c("Unknown","0–15","15-24","25–49","50–59","60–69","70–79","80+")
+age_levels_combined <- c("Unknown","0–14","15–24","25–49","50–59","60–69","70–79","80+")
 combined_by_age <- bind_rows(
   weekly_mzcr %>% select(week_start, age_group, deaths) %>% mutate(source = "MZCR"),
   weekly_eu   %>% select(week_start, age_group, deaths) %>% mutate(source = "Eurostat")
