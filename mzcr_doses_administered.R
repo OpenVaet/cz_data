@@ -111,7 +111,7 @@ doses_long <- df_aug %>%
     names_pattern = dose_cols_pattern
   ) %>%
   dplyr::mutate(
-    week_date   = to_iso_monday_flex(Date),  # <-- new parser here
+    week_date   = to_iso_monday_flex(Date),
     product_type = ifelse(is.na(VaccinationProductCode) | !nzchar(trimws(VaccinationProductCode)),
                           "Unknown", trimws(VaccinationProductCode)),
     dose_num     = dplyr::recode(dose_label,

@@ -20,7 +20,7 @@ suppressPackageStartupMessages({
 file_path <- "data/nakazeni-hospitalizace-testy.csv"
 file_url  <- "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/nakazeni-hospitalizace-testy.csv"
 
-# New header applied to the CZ file after download (your “tests/cases per day” table)
+# New header applied to the CZ file after download
 cz_new_header <- paste0(
   '"id","date","ageCategory","testIndication","completedVaccination","reinfections","performedTests","confirmedCases","newHospitalizations","newIcuAdmissions"'
 )

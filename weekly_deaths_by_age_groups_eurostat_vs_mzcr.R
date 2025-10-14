@@ -429,18 +429,23 @@ for (grp in levels(combined_by_age$age_group)) {
 }
 
 # ================================================================
-# Weekly % of "missing deaths" by age group
-# Missing = (Eurostat - MZCR) when positive, else 0
-# Output: data/weekly_missing_deaths_among_age_groups.csv
+# Weekly "missing deaths" by age group + week-level diagnostics
+# Missing = pmax(Eurostat - MZCR, 0)
+# Output (single write): data/weekly_missing_deaths_among_age_groups.csv
 # ================================================================
 
-# Ensure age group order is consistent
-age_levels_combined <- c("Unknown","0–15","15-24","25–49","50–59","60–69","70–79","80+")
+# Use the same canonical labels everywhere
+age_levels_combined <- c("Unknown","0–14","15–24","25–49","50–59","60–69","70–79","80+")
+
+baseline_start <- ISOweek::ISOweek2date("2020-W13-1")   # <-- new lower bound
 
 missing_by_age <- combined_by_age %>%
+  dplyr::filter(week_start >= baseline_start) %>%        # <-- apply W13 filter up-front
   tidyr::pivot_wider(
-    id_cols   = c(week_start, age_group),
-    names_from = source, values_from = deaths, values_fill = 0
+    id_cols    = c(week_start, age_group),
+    names_from = source,
+    values_from = deaths,
+    values_fill = 0
   ) %>%
   dplyr::mutate(
     age_group = factor(age_group, levels = age_levels_combined),
@@ -448,23 +453,94 @@ missing_by_age <- combined_by_age %>%
   ) %>%
   dplyr::group_by(week_start) %>%
   dplyr::mutate(
+    mzcr_total_week     = sum(MZCR, na.rm = TRUE),
+    eurostat_total_week = sum(Eurostat, na.rm = TRUE),
     total_missing_deaths_week = sum(missing_deaths, na.rm = TRUE),
+    # Share of the *week's missing* that sits in each age group
     pct_missing_share = dplyr::if_else(
       total_missing_deaths_week > 0,
       100 * missing_deaths / total_missing_deaths_week,
       NA_real_
+    ),
+    # Share of Eurostat weekly deaths that are "missing" overall
+    pct_missing_of_total_week = dplyr::if_else(
+      eurostat_total_week > 0,
+      100 * total_missing_deaths_week / eurostat_total_week,
+      NA_real_
     )
   ) %>%
   dplyr::ungroup() %>%
+  dplyr::mutate(
+    iso_year = as.integer(format(week_start, "%G")),
+    iso_week = as.integer(format(week_start, "%V")),
+    imputation_eligible = week_start <= as.Date("2023-12-31")
+  ) %>%
   dplyr::arrange(week_start, age_group) %>%
   dplyr::select(
-    week_start, age_group,
+    week_start, iso_year, iso_week, imputation_eligible,
+    age_group,
     MZCR, Eurostat,
+    mzcr_total_week, eurostat_total_week,
     missing_deaths, total_missing_deaths_week,
-    pct_missing_share
+    pct_missing_share, pct_missing_of_total_week
   )
 
-# Save
+# Single write
 write.csv(missing_by_age, "data/weekly_missing_deaths_among_age_groups.csv", row.names = FALSE)
-
 cat("Wrote: data/weekly_missing_deaths_among_age_groups.csv\n")
+
+# ------------------------------------------------
+# Totals from 2020-W13 through 2023-12-31 (exclude 2024+)
+# ------------------------------------------------
+baseline_start <- ISOweek::ISOweek2date("2020-W13-1")
+cutoff         <- as.Date("2023-12-31")
+
+# Sum of weekly "missing deaths" (Eurostat - MZCR, zero-truncated), no age double count
+missing_totals_2020W13_2023 <- missing_by_age %>%
+  dplyr::filter(week_start >= baseline_start, week_start <= cutoff) %>%
+  dplyr::distinct(week_start, total_missing_deaths_week) %>%  # one row per week
+  dplyr::summarise(
+    total_missing_deaths = sum(total_missing_deaths_week, na.rm = TRUE),
+    n_weeks              = dplyr::n()
+  )
+
+# Eurostat & MZCR totals in the same window (aggregate per week first)
+eurostat_total_2020W13_2023 <- weekly_eu %>%
+  dplyr::filter(week_start >= baseline_start, week_start <= cutoff) %>%
+  dplyr::group_by(week_start) %>%
+  dplyr::summarise(total = sum(deaths, na.rm = TRUE), .groups = "drop") %>%
+  dplyr::summarise(total_deaths = sum(total, na.rm = TRUE)) %>%
+  dplyr::pull(total_deaths)
+
+mzcr_total_2020W13_2023 <- weekly_mzcr %>%
+  dplyr::filter(week_start >= baseline_start, week_start <= cutoff) %>%
+  dplyr::group_by(week_start) %>%
+  dplyr::summarise(total = sum(deaths, na.rm = TRUE), .groups = "drop") %>%
+  dplyr::summarise(total_deaths = sum(total, na.rm = TRUE)) %>%
+  dplyr::pull(total_deaths)
+
+share_missing_vs_eurostat <- ifelse(eurostat_total_2020W13_2023 > 0,
+                                    100 * missing_totals_2020W13_2023$total_missing_deaths / eurostat_total_2020W13_2023,
+                                    NA_real_
+)
+
+cat("\n=== Missing-deaths summary (2020-W13 → 2023-12-31) ===\n")
+cat(sprintf("Weeks considered: %d\n", missing_totals_2020W13_2023$n_weeks))
+cat(sprintf("Eurostat total deaths: %s\n", format(eurostat_total_2020W13_2023, big.mark=",")))
+cat(sprintf("MZCR total deaths:    %s\n", format(mzcr_total_2020W13_2023, big.mark=",")))
+cat(sprintf("Missing deaths (Eurostat - MZCR, zero-truncated): %s\n",
+            format(missing_totals_2020W13_2023$total_missing_deaths, big.mark=",")))
+cat(sprintf("Missing as %% of Eurostat: %.2f%%\n\n", share_missing_vs_eurostat))
+
+# Optional: write a compact one-line CSV with these totals
+summary_row <- tibble::tibble(
+  from_week          = "2020-W13",
+  through_date       = cutoff,
+  weeks              = missing_totals_2020W13_2023$n_weeks,
+  eurostat_total     = eurostat_total_2020W13_2023,
+  mzcr_total         = mzcr_total_2020W13_2023,
+  missing_zero_trunc = missing_totals_2020W13_2023$total_missing_deaths,
+  missing_pct_eurostat = share_missing_vs_eurostat
+)
+write.csv(summary_row, "data/weekly_missing_deaths_summary_2020W13_2023.csv", row.names = FALSE)
+cat("Wrote: data/weekly_missing_deaths_summary_2020W13_2023.csv\n")

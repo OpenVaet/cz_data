@@ -46,7 +46,7 @@ df_aug <- df %>%
 # -------------------------------------------------------------------
 # Weekly deaths by age group
 # -------------------------------------------------------------------
-age_levels <- c("Unknown","0–15","15-24","25–49","50–59","60–69","70–79","80+")
+age_levels <- c("Unknown","0–14","15–24","25–49","50–59","60–69","70–79","80+")
 
 weekly_by_age <- df %>%
   # rely on precomputed has_death + week_date_of_death
@@ -58,8 +58,8 @@ weekly_by_age <- df %>%
     # Age grouping; use provided age_at_death and fall back to Unknown if YOB missing
     age_group = dplyr::case_when(
       is.na(year_of_birth_end) ~ "Unknown",
-      !is.na(age_at_death) & age_at_death <= 15 ~ "0–15",
-      !is.na(age_at_death) & age_at_death <= 24 ~ "15-24",
+      !is.na(age_at_death) & age_at_death <= 14 ~ "0–14",
+      !is.na(age_at_death) & age_at_death <= 24 ~ "15–24",
       !is.na(age_at_death) & age_at_death <= 49 ~ "25–49",
       !is.na(age_at_death) & age_at_death <= 59 ~ "50–59",
       !is.na(age_at_death) & age_at_death <= 69 ~ "60–69",
@@ -71,6 +71,8 @@ weekly_by_age <- df %>%
   filter(!is.na(week_start)) %>%
   # keep plausible ages when known
   filter(is.na(year_of_birth_end) | (age_at_death >= 0 & age_at_death <= 110)) %>%
+  # === Restrict scope to ISO years 2020–2023 (exclude 2024) ===
+  filter(iso_year >= 2020, iso_year <= 2023) %>%
   mutate(age_group = factor(age_group, levels = age_levels)) %>%
   group_by(week_start, age_group) %>%
   summarise(deaths = n(), .groups = "drop") %>%
@@ -145,8 +147,8 @@ trend2_df <- trend2_df %>% dplyr::mutate(y_plot = pct_trend * K)
 pal8 <- brewer.pal(8, "Blues")
 fill_vals <- c(
   "Unknown" = pal8[8],
-  "0–15"    = pal8[7],
-  "15-24"   = pal8[6],
+  "0–14"    = pal8[7],
+  "15–24"   = pal8[6],
   "25–49"   = pal8[5],
   "50–59"   = pal8[4],
   "60–69"   = pal8[3],

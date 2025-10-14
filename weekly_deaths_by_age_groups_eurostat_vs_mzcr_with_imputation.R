@@ -30,6 +30,42 @@ if (!file.exists(file_path)) {
 df <- read.csv(file_path, stringsAsFactors = FALSE)
 cat(sprintf("Loaded %d records from imputed file\n", nrow(df)))
 
+# --- Diagnostics: imputation coverage & Unknowns -------------------
+# Coerce types (write.csv saved NA as "", so coerce "" -> NA)
+df$week_date_of_death <- as.Date(df$week_date_of_death)
+df$year_of_birth_end  <- suppressWarnings(as.integer(df$year_of_birth_end))
+
+deaths_total <- sum(!is.na(df$week_date_of_death))
+miss_yob_all <- sum(is.na(df$year_of_birth_end) & !is.na(df$week_date_of_death))
+miss_yob_2020_2023 <- sum(is.na(df$year_of_birth_end) & !is.na(df$week_date_of_death) &
+                           df$week_date_of_death <= as.Date("2023-12-31"))
+miss_yob_2024plus <- sum(is.na(df$year_of_birth_end) & !is.na(df$week_date_of_death) &
+                          df$week_date_of_death >= as.Date("2024-01-01"))
+
+cat("\n=== DIAG: Deaths & missing YOB in POST-IMPUTATION file ===\n")
+cat(sprintf("Total deaths: %s\n", format(deaths_total, big.mark=",")))
+cat(sprintf("Missing YOB among deaths (all years): %s (%.2f%%)\n",
+            format(miss_yob_all, big.mark=","), 100*miss_yob_all/max(1,deaths_total)))
+cat(sprintf("… of which in 2020–2023 (should be ~0): %s\n", format(miss_yob_2020_2023, big.mark=",")))
+cat(sprintf("… of which in 2024+: %s\n\n", format(miss_yob_2024plus, big.mark=",")))
+
+# Top weeks (2020–2023) still missing YOB, if any
+left_miss <- df %>%
+  dplyr::filter(!is.na(week_date_of_death),
+                week_date_of_death <= as.Date("2023-12-31"),
+                is.na(year_of_birth_end)) %>%
+  dplyr::count(week_start = as.Date(week_date_of_death), name = "n") %>%
+  dplyr::arrange(dplyr::desc(n)) %>% head(10)
+
+if (nrow(left_miss) > 0) {
+  cat("Top weeks (2020–2023) still missing YOB (should be empty):\n")
+  print(left_miss)
+} else {
+  cat("No 2020–2023 deaths with missing YOB remain. Any Unknowns should be 2024+.\n")
+}
+cat("----------------------------------------------------------------\n\n")
+
+
 # -------------------------------------------------------------------
 # Weekly deaths by age group (MZCR - POST IMPUTATION)
 # -------------------------------------------------------------------

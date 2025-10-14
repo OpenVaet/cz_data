@@ -58,6 +58,8 @@ if (!file.exists(file_path)) {
 data_raw <- read.csv(file_path, stringsAsFactors = FALSE)
 cat("Raw data dimensions:", nrow(data_raw), "rows x", ncol(data_raw), "columns\n")
 
+
+
 data <- data_raw %>%
   mutate(
     year_of_birth = as.integer(year_of_birth_end),
