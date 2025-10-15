@@ -27,7 +27,7 @@ use lib "$FindBin::Bin/../lib";
 
 # Step 3 :
 # 1. We load the eurostat deaths and classify them by year, week, age group & sex.
-# 2. We load our previously reimputed deaths by age groups ; and evaluate on which days we have too many - or not enough known YOB deaths after reattribution.
+# 2. We load our previously reimputed deaths by age groups & sexes ; and evaluate on which days we have too many - or not enough known YOB deaths after reattribution.
 # 3. We load the overall data, and note total deaths by age groups & sexes, and those for which we don't have the YOB, along with IDs on which we have no YOB
 # 4. For each week which doesn't have enough deaths in a given age group & sex, we attribute from the unknown cohort who died this week the available share of deaths,
 #    proportional to the distribution reported by Eurostat on this specific week.

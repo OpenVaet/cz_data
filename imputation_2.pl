@@ -26,17 +26,23 @@ my %subjects_pool           = ();
 my @sexes                   = ('M', 'F');
 
 # --- helpers ---
-sub ymd_to_iso_week {
+sub ymd_to_iso_year_week {
     my ($ymd) = @_;
     die "Bad date: $ymd" unless defined $ymd && $ymd =~ /\A\d{4}-\d{2}-\d{2}\z/;
 
-    my $t           = Time::Piece->strptime($ymd, "%Y-%m-%d");
-    my $iso_week    = $t->strftime("%V");         # ISO week number 01..53
-    my $iso_wday    = $t->strftime("%u");         # ISO weekday 1=Mon..7=Sun
-    my $week_monday = ($t - ($iso_wday - 1) * ONE_DAY)->strftime("%Y-%m-%d");
-    return (
-        $iso_week
-    );
+    my $t = Time::Piece->strptime($ymd, "%Y-%m-%d");
+
+    # ISO week number (01..53) -> normalize to integer to avoid "01" vs "1" key mismatch
+    my $iso_week = 0 + $t->strftime("%V");
+
+    # ISO weekday (1=Mon..7=Sun)
+    my $iso_wday = 0 + $t->strftime("%u");
+
+    # ISO year is the year of the Thursday in this week
+    my $thu      = $t + (4 - $iso_wday) * ONE_DAY;
+    my $iso_year = 0 + $thu->strftime("%Y");
+
+    return ($iso_year, $iso_week);
 }
 
 sub open_csv_reader {
@@ -142,6 +148,8 @@ my ($deaths_csv, $deaths_fh, $deaths_headers, $deaths_idx) = open_csv_reader($de
 while (my $row = $deaths_csv->getline_hr($deaths_fh)) {
 	my $year                  = $row->{'year'}                  // die;
 	my $week                  = $row->{'week'}                  // die;
+	$year                     = 0 + $year;
+	$week                     = 0 + $week;
 	my $age_group             = $row->{'age_group'}             // die;
 	my $eurostat_deaths       = $row->{'eurostat_deaths'}       // die;
 	my $mzcr_deaths           = $row->{'mzcr_deaths'}           // die;
@@ -153,8 +161,8 @@ while (my $row = $deaths_csv->getline_hr($deaths_fh)) {
 		$total_deaths_missing += $mzcr_minus_eurostats;
 	}
 	$deaths{$year}->{$week}->{$age_group}->{$sex}->{'mzcr_minus_eurostats'} = $mzcr_minus_eurostats;
-	$deaths{$year}->{$week}->{$age_group}->{$sex}->{'eurostat_deaths'}     = $eurostat_deaths;
-	$deaths{$year}->{$week}->{$age_group}->{$sex}->{'mzcr_deaths'}         = $mzcr_deaths;
+	$deaths{$year}->{$week}->{$age_group}->{$sex}->{'eurostat_deaths'}      = $eurostat_deaths;
+	$deaths{$year}->{$week}->{$age_group}->{$sex}->{'mzcr_deaths'}          = $mzcr_deaths;
 }
 $deaths_csv->eof or die "CSV error in $deaths_offset_file: " . $deaths_csv->error_diag;
 close $deaths_fh or warn "Couldn't close $deaths_offset_file: $!";
@@ -165,11 +173,8 @@ say "[$total_deaths_extra] too many deaths in MZCR in a given sex & age group, a
 my %deaths_to_reattrib = ();
 for my $year (sort{$a <=> $b} keys %deaths) {
 	for my $week (sort{$a <=> $b} keys %{$deaths{$year}}) {
-		if ($year eq 2020) {
-			next if $week < 10;
-		} elsif ($year eq 2024) {
-			next;
-		}
+		if ($year == 2020) { next if $week < 10; }
+		elsif ($year == 2024) { next; }
 		for my $sex (@sexes) {
 			my $eurostat_deaths       = $deaths{$year}->{$week}->{'0-4'}->{$sex}->{'eurostat_deaths'}      // 0;
 			my $mzcr_deaths           = $deaths{$year}->{$week}->{'0-4'}->{$sex}->{'mzcr_deaths'}          // 0;
@@ -183,12 +188,12 @@ for my $year (sort{$a <=> $b} keys %deaths) {
 					my $to_reattrib  = 0;
 					if ($abs_offset >= $mzcr_minus_eurostats) {
 						$to_reattrib = $mzcr_minus_eurostats;
-						say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [0-4] can be entirely compensated ($to_reattrib). [5-9] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
+						# say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [0-4] can be entirely compensated ($to_reattrib). [5-9] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
 					} else {
 						$to_reattrib = $abs_offset;
-						say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [0-4] can be partially compensated ($to_reattrib). [5-9] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
+						# say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [0-4] can be partially compensated ($to_reattrib). [5-9] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
 					}
-					$deaths_to_reattrib{$sex}->{$year}->{$week}->{'0-4'}->{'5-9'}  = $to_reattrib;
+					$deaths_to_reattrib{$sex}->{$year}->{$week}->{'0-4'}->{'5-9'}->{'to_reattrib'} = $to_reattrib;
 
 					# Subtract the deaths we just reattributed in the 0-4 group & recalcs offset.
 					$deaths{$year}->{$week}->{'0-4'}->{$sex}->{'mzcr_deaths'}         -= $to_reattrib;
@@ -217,11 +222,8 @@ for my $age_group (@age_groups) {
 	my $prev_age_grp = "$prev_from-$prev_to";
 	for my $year (sort{$a <=> $b} keys %deaths) {
 		for my $week (sort{$a <=> $b} keys %{$deaths{$year}}) {
-			if ($year eq 2020) {
-				next if $week < 10;
-			} elsif ($year eq 2024) {
-				next;
-			}
+			if ($year == 2020) { next if $week < 10; }
+			elsif ($year == 2024) { next; }
 			for my $sex (@sexes) {
 				my $eurostat_deaths      = $deaths{$year}->{$week}->{$age_group}->{$sex}->{'eurostat_deaths'}      // 0;
 				my $mzcr_deaths          = $deaths{$year}->{$week}->{$age_group}->{$sex}->{'mzcr_deaths'}          // 0;
@@ -235,12 +237,12 @@ for my $age_group (@age_groups) {
 						my $abs_offset   = abs($next_val_offset);
 						if ($abs_offset >= $mzcr_minus_eurostats) {
 							$to_reattrib = $mzcr_minus_eurostats;
-							say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [$age_group] can be entirely compensated ($to_reattrib). [$next_age_grp] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
+							# say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [$age_group] can be entirely compensated ($to_reattrib). [$next_age_grp] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
 						} else {
 							$to_reattrib = $abs_offset;
-							say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [$age_group] can be partially compensated ($to_reattrib). [$next_age_grp] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
+							# say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [$age_group] can be partially compensated ($to_reattrib). [$next_age_grp] : $next_val_mzcr MZCR vs $next_val_eurostat Eurostat";
 						}
-						$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group}->{$next_age_grp}  = $to_reattrib;
+						$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group}->{$next_age_grp}->{'to_reattrib'} = $to_reattrib;
 
 						# Subtract the deaths we just reattributed in the $age_group group & recalcs offset.
 						$deaths{$year}->{$week}->{$age_group}->{$sex}->{'mzcr_deaths'}         -= $to_reattrib;
@@ -256,7 +258,7 @@ for my $age_group (@age_groups) {
 						my $prev_val_eurostat = $deaths{$year}->{$week}->{$prev_age_grp}->{$sex}->{'eurostat_deaths'}     // 0;
 						my $prev_val_offset   = $deaths{$year}->{$week}->{$prev_age_grp}->{$sex}->{'mzcr_minus_eurostats'} // 0;
 						if ($prev_val_offset < 0) {
-							my $abs_offset   = abs($prev_val_offset);
+							my $abs_offset    = abs($prev_val_offset);
 							my $current_reattrib = 0;
 							if ($abs_offset >= $still_missing) {
 								$current_reattrib = $still_missing;
@@ -265,7 +267,7 @@ for my $age_group (@age_groups) {
 								$current_reattrib = $abs_offset;
 								# say "[$year] - [$week] - The offset [$still_missing] on [$age_group] can be partially compensated ($abs_offset).\n[$prev_from-$prev_to] : $prev_val_mzcr MZCR vs $prev_val_eurostat Eurostat";
 							}
-							$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group}->{$prev_age_grp} += $current_reattrib;
+							$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group}->{$prev_age_grp}->{'to_reattrib'} += $current_reattrib;
 
 							# Subtract the deaths we just reattributed in the current group & recalcs offset.
 							$deaths{$year}->{$week}->{$age_group}->{$sex}->{'mzcr_deaths'}         -= $current_reattrib;
@@ -287,11 +289,8 @@ for my $age_group (@age_groups) {
 # 90-999
 for my $year (sort{$a <=> $b} keys %deaths) {
 	for my $week (sort{$a <=> $b} keys %{$deaths{$year}}) {
-		if ($year eq 2020) {
-			next if $week < 10;
-		} elsif ($year eq 2024) {
-			next;
-		}
+		if ($year == 2020) { next if $week < 10; }
+		elsif ($year == 2024) { next; }
 		for my $sex (@sexes) {
 			my $eurostat_deaths      = $deaths{$year}->{$week}->{'90-999'}->{$sex}->{'eurostat_deaths'}     // 0;
 			my $mzcr_deaths          = $deaths{$year}->{$week}->{'90-999'}->{$sex}->{'mzcr_deaths'}         // 0;
@@ -305,21 +304,21 @@ for my $year (sort{$a <=> $b} keys %deaths) {
 					my $abs_offset   = abs($prev_val_offset);
 					if ($abs_offset >= $mzcr_minus_eurostats) {
 						$to_reattrib = $mzcr_minus_eurostats;
-						say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [90-999] can be entirely compensated ($to_reattrib). [85-89] : $prev_val_mzcr MZCR vs $prev_val_eurostat Eurostat";
+						# say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [90-999] can be entirely compensated ($to_reattrib). [85-89] : $prev_val_mzcr MZCR vs $prev_val_eurostat Eurostat";
 					} else {
 						$to_reattrib = $abs_offset;
-						say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [90-999] can be partially compensated ($to_reattrib). [85-89] : $prev_val_mzcr MZCR vs $prev_val_eurostat Eurostat";
+						# say "[$year] - [$week] - The offset [$mzcr_minus_eurostats] on [90-999] can be partially compensated ($to_reattrib). [85-89] : $prev_val_mzcr MZCR vs $prev_val_eurostat Eurostat";
 					}
 
-					$deaths_to_reattrib{$sex}->{$year}->{$week}->{'90-999'}->{'85-89'} += $to_reattrib;
+					$deaths_to_reattrib{$sex}->{$year}->{$week}->{'90-999'}->{'85-89'}->{'to_reattrib'} += $to_reattrib;
 
 					# Subtract the deaths we just reattributed in the current group & recalcs offset.
 					$deaths{$year}->{$week}->{'90-999'}->{$sex}->{'mzcr_deaths'}         -= $to_reattrib;
 					$deaths{$year}->{$week}->{'90-999'}->{$sex}->{'mzcr_minus_eurostats'} = $deaths{$year}->{$week}->{'90-999'}->{$sex}->{'mzcr_deaths'} - $deaths{$year}->{$week}->{'90-999'}->{$sex}->{'eurostat_deaths'};
 
 					# Adds the deaths to the next age group & recalcs offset.
-					$deaths{$year}->{$week}->{'85-89'}->{$sex}->{'mzcr_deaths'}         += $to_reattrib;
-					$deaths{$year}->{$week}->{'85-89'}->{$sex}->{'mzcr_minus_eurostats'} = $deaths{$year}->{$week}->{'85-89'}->{$sex}->{'mzcr_deaths'} - $deaths{$year}->{$week}->{'85-89'}->{$sex}->{'eurostat_deaths'};
+					$deaths{$year}->{$week}->{'85-89'}->{$sex}->{'mzcr_deaths'}          += $to_reattrib;
+					$deaths{$year}->{$week}->{'85-89'}->{$sex}->{'mzcr_minus_eurostats'}  = $deaths{$year}->{$week}->{'85-89'}->{$sex}->{'mzcr_deaths'} - $deaths{$year}->{$week}->{'85-89'}->{$sex}->{'eurostat_deaths'};
 				}
 			}
 		}
@@ -334,7 +333,7 @@ for my $sex (sort keys %deaths_to_reattrib) {
 		for my $week (sort{$a <=> $b} keys %{$deaths_to_reattrib{$sex}->{$year}}) {
 			for my $age_group_from (sort keys %{$deaths_to_reattrib{$sex}->{$year}->{$week}}) {
 				for my $age_group_to (sort keys %{$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}}) {
-					my $to_reattrib = $deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}->{$age_group_to} // die;
+					my $to_reattrib = $deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}->{$age_group_to}->{'to_reattrib'} // die;
 					say $out_attrib "$year,$week,$age_group_from,$sex,$age_group_to,$to_reattrib";
 				}
 			}
@@ -350,7 +349,7 @@ my ($mzcr_csv, $mzcr_fh, $mzcr_headers, $mzcr_idx) = open_csv_reader($mzcr_file)
 open my $out_imput, '>', 'outputs/imputation_layer_2.csv';
 open my $out_details, '>', 'outputs/imputation_layer_2_details.csv';
 say $out_imput "id,sex,year_of_birth_end,week_date_of_death,age_at_death";
-say $out_details "id,sex,year_of_birth_end,week_date_of_death,age_at_death,imputed_year_of_birth,imputed_age";
+say $out_details "id,death_year,death_week,sex,year_of_birth_end,week_date_of_death,age_at_death,imputed_year_of_birth,imputed_age";
 while (my $row = $mzcr_csv->getline_hr($mzcr_fh)) {
 	$mzcr_current_rows++;
 	$cpt++;
@@ -364,40 +363,66 @@ while (my $row = $mzcr_csv->getline_hr($mzcr_fh)) {
 	my $sex                = $row->{'sex'}                // die;
 	my $id                 = $row->{'id'}                 // die;
 	if ($year_of_birth_end && $week_date_of_death) {
-		my ($year) = split '-', $week_date_of_death;
-		my $week = ymd_to_iso_week($week_date_of_death);
-		my ($from_year, $to_year) = from_year_to_year_from_age($age_at_death);
-		my $age_group_from = "$from_year-$to_year";
-		if (exists $deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}) {
-			my ($age_before, $yob_before) = ($age_at_death, $year_of_birth_end);
-			for my $age_group_to (sort keys %{$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}}) {
-				my $current = $deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}->{$age_group_to} // die;
-				my ($target_from, $target_to) = split '-', $age_group_to;
-				if ($target_from > $from_year) {
-					$year_of_birth_end = $year_of_birth_end - 5;
-					$age_at_death = $age_at_death + 5;
-				} else {
-					$year_of_birth_end = $year_of_birth_end + 5;
-					$age_at_death = $age_at_death - 5;
-				}
+	    my ($death_year, $death_week) = ymd_to_iso_year_week($week_date_of_death);
+	    my ($from_year, $to_year) = from_year_to_year_from_age($age_at_death);
+	    my $age_group_cur = "$from_year-$to_year";
 
-				# Removing 1 to current
-				$current = $current - 1;
-				if ($current != 0) {
-					$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}->{$age_group_to} = $current;
-				} else {
-					delete $deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}->{$age_group_to};
-					my $current_keys = keys %{$deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from}};
-					if ($current_keys == 0) {
-						delete $deaths_to_reattrib{$sex}->{$year}->{$week}->{$age_group_from};
+	    my $moved_any = 0;
+	    my ($age_before, $yob_before) = ($age_at_death, $year_of_birth_end);
+		if ($year_of_birth_end && $week_date_of_death) {
+			my ($death_year, $death_week) = ymd_to_iso_year_week($week_date_of_death);
+			my ($from_year, $to_year) = from_year_to_year_from_age($age_at_death);
+			my $age_group_from = "$from_year-$to_year";
+			if (exists $deaths_to_reattrib{$sex}->{$death_year}->{$death_week}->{$age_group_from}) {
+				my ($age_before, $yob_before) = ($age_at_death, $year_of_birth_end);
+				for my $age_group_to (sort keys %{$deaths_to_reattrib{$sex}->{$death_year}->{$death_week}->{$age_group_from}}) {
+					my $current = $deaths_to_reattrib{$sex}->{$death_year}->{$death_week}->{$age_group_from}->{$age_group_to}->{'to_reattrib'} // die;
+
+					my ($cur_from)    = split '-', $age_group_cur;
+					my ($target_from, $target_to) = split '-', $age_group_to;
+					die unless $target_to;
+
+					# propose a new age by stepping 5 toward the target…
+					my $proposed_age = $age_at_death + ($target_from > $cur_from ? 5 : -5);
+
+					# …then CLAMP to ensure we actually land in the destination bin
+					my $new_age = $proposed_age;
+					$new_age = $target_from if $new_age < $target_from;
+					$new_age = $target_to   if $new_age > $target_to;
+
+					# adjust YOB by the exact change in age
+					my $delta_age = $new_age - $age_at_death;   # negative if moving to a younger bin
+					$year_of_birth_end -= $delta_age;
+					$age_at_death       = $new_age;
+
+					# recompute the real bin from the updated age (defensive, keeps code honest)
+					my ($nf, $nt) = from_year_to_year_from_age($age_at_death);
+					$age_group_cur = "$nf-$nt";
+
+					# count only if the bin actually changed
+					my ($of, $ot) = from_year_to_year_from_age($age_before);
+					my ($tf, $tt) = from_year_to_year_from_age($age_at_death);
+					$reattributed++;
+					die if "$of-$ot" eq "$tf-$tt";
+
+					# Removing 1 to current
+					$current = $current - 1;
+					if ($current != 0) {
+						$deaths_to_reattrib{$sex}->{$death_year}->{$death_week}->{$age_group_from}->{$age_group_to}->{'to_reattrib'} = $current;
+					} else {
+						delete $deaths_to_reattrib{$sex}->{$death_year}->{$death_week}->{$age_group_from}->{$age_group_to};
+						my $current_keys = keys %{$deaths_to_reattrib{$sex}->{$death_year}->{$death_week}->{$age_group_from}};
+						if ($current_keys == 0) {
+							delete $deaths_to_reattrib{$sex}->{$death_year}->{$death_week}->{$age_group_from};
+						}
 					}
+					last;
 				}
-				last;
+				say $out_details "$id,$death_year,$death_week,$sex,$yob_before,$week_date_of_death,$age_before,$year_of_birth_end,$age_at_death";
 			}
-			say $out_details "$id,$sex,$yob_before,$week_date_of_death,$age_before,$year_of_birth_end,$age_at_death";
-			$reattributed++;
 		}
 	}
+
 	say $out_imput "$id,$sex,$year_of_birth_end,$week_date_of_death,$age_at_death";
 }
 close $out_imput;
@@ -408,5 +433,5 @@ STDOUT->printflush("\rParsing MZCR - [$mzcr_current_rows / $mzcr_total_rows]");
 say "";
 
 say "-" x 50;
-say "reattributed : $reattributed";
+say "Reattributed : $reattributed";
 say "-" x 50;

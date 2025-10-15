@@ -22,6 +22,12 @@ my $mzcr_origin_file     = "data/mzcr_no_or_first_infection.csv";
 my %eurostat_deaths      = ();
 my %mzcr_deaths          = ();
 my %data_to_attribute    = ();
+my $csv;
+BEGIN {
+    eval { require Text::CSV_XS; Text::CSV_XS->import(); 1 }
+      ? ($csv = Text::CSV_XS->new({ binary => 1, eol => "\n" }))
+      : do { require Text::CSV; Text::CSV->import(); $csv = Text::CSV->new({ binary => 1, eol => "\n" }) };
+}
 
 load_eurostat_deaths();
 
@@ -40,7 +46,7 @@ compute_age_groups_sexes_offsets();
 $total_deaths_extra   = abs($total_deaths_extra);
 $total_deaths_missing = abs($total_deaths_missing);
 say "-" x 50;
-say "----- Post-imputation Statistics -----";
+say "----- Post-imputation 2 Recap. -----";
 say "-" x 50;
 say "total_deaths_extra       : $total_deaths_extra";
 say "total_deaths_missing     : $total_deaths_missing";
@@ -53,19 +59,41 @@ load_no_yob_deaths();
 
 # --- Analyses sex & YOB to attribute weekly ---
 my %weekly_deaths_imputations = ();
+calculate_weekly_imputations();
+
+# --- Outputting the imputation details ---
+# Prefer Text::CSV_XS, fall back to Text::CSV
+print_imputation_details();
+
+# --- Outputting the already imputed known deaths ---
+open my $out_imput, '>', 'outputs/imputation_layer_3.csv';
+say $out_imput "id,sex,year_of_birth_end,week_date_of_death,age_at_death,death_year,death_week,age_group";
+print_known_dob_deaths();
+
+# --- Attributing to the unknown YOB the imputed ones. ---
+impute_to_unknown_yob_sex();
+
+close $out_imput;
+say "";
 
 # --- helpers ---
-sub ymd_to_iso_week {
+sub ymd_to_iso_year_week {
     my ($ymd) = @_;
     die "Bad date: $ymd" unless defined $ymd && $ymd =~ /\A\d{4}-\d{2}-\d{2}\z/;
 
-    my $t           = Time::Piece->strptime($ymd, "%Y-%m-%d");
-    my $iso_week    = $t->strftime("%V");         # ISO week number 01..53
-    my $iso_wday    = $t->strftime("%u");         # ISO weekday 1=Mon..7=Sun
-    my $week_monday = ($t - ($iso_wday - 1) * ONE_DAY)->strftime("%Y-%m-%d");
-    return (
-        $iso_week
-    );
+    my $t = Time::Piece->strptime($ymd, "%Y-%m-%d");
+
+    # ISO week number (01..53) -> normalize to integer to avoid "01" vs "1" key mismatch
+    my $iso_week = 0 + $t->strftime("%V");
+
+    # ISO weekday (1=Mon..7=Sun)
+    my $iso_wday = 0 + $t->strftime("%u");
+
+    # ISO year is the year of the Thursday in this week
+    my $thu      = $t + (4 - $iso_wday) * ONE_DAY;
+    my $iso_year = 0 + $thu->strftime("%Y");
+
+    return ($iso_year, $iso_week);
 }
 
 sub open_csv_reader {
@@ -171,7 +199,7 @@ sub load_eurostat_deaths {
 		my $sex = $row->{'sex: Sex'} // die;
 		my $geo = $row->{'geo: Geopolitical entity (reporting)'} // die;
 		my $value = $row->{'OBS_VALUE: Observation value'} // die;
-		my $week = $row->{'TIME_PERIOD: Time'} // die;
+		my $week_code = $row->{'TIME_PERIOD: Time'} // die;
 		my $age = $row->{'age: Age class'} // die;
 		next unless $geo eq 'CZ: Czechia';
 		next if $sex eq 'T: Total';
@@ -184,7 +212,7 @@ sub load_eurostat_deaths {
 		} else {
 			die;
 		}
-		my ($year, $week_number) = split '-', $week;
+		my ($year, $week) = split '-', $week_code;
 		my ($from_year, $to_year);
 		if ($age eq "UNK: Unknown") {
 			die if $value;
@@ -231,9 +259,11 @@ sub load_eurostat_deaths {
 			die;
 		}
 		my $age_group = "$from_year-$to_year";
-		$week_number =~ s/W//;
-		die unless looks_like_number($week_number);
-		$eurostat_deaths{$year}->{$week_number}->{$age_group}->{$sex_code} += $value;
+		$week =~ s/W//;
+		die unless looks_like_number($week);
+		$year = 0 + $year;
+		$week = 0 + $week;
+		$eurostat_deaths{$year}->{$week}->{$age_group}->{$sex_code} += $value;
 	}
 	$euro_csv->eof or die "CSV error in $eurostat_deaths_file: " . $euro_csv->error_diag;
 	close $euro_fh or warn "Couldn't close $eurostat_deaths_file: $!";
@@ -251,15 +281,14 @@ sub load_mzcr_known_yob_deaths {
 			$cpt = 0;
 			STDOUT->printflush("\rParsing MZCR - [$mzcr_current_rows / $mzcr_total_rows]");
 		}
-		my $week_date_of_death    = $row->{'week_date_of_death'} // die;
-		my $year_of_birth_end     = $row->{'year_of_birth_end'}  // die;
-		my $age_at_death          = $row->{'age_at_death'}       // die;
-		my $sex                   = $row->{'sex'}                // die;
-		my $id                    = $row->{'id'}                 // die;
-		my ($death_year)          = split '-', $week_date_of_death;
-		my $death_week            = ymd_to_iso_week($week_date_of_death);
-		my ($from_year, $to_year) = from_year_to_year_from_age($age_at_death);
-		my $age_group             = "$from_year-$to_year";
+		my $week_date_of_death        = $row->{'week_date_of_death'} // die;
+		my $year_of_birth_end         = $row->{'year_of_birth_end'}  // die;
+		my $age_at_death              = $row->{'age_at_death'}       // die;
+		my $sex                       = $row->{'sex'}                // die;
+		my $id                        = $row->{'id'}                 // die;
+		my ($death_year, $death_week) = ymd_to_iso_year_week($week_date_of_death);
+		my ($from_year, $to_year)     = from_year_to_year_from_age($age_at_death);
+		my $age_group                 = "$from_year-$to_year";
 		$mzcr_deaths{$death_year}->{$death_week}->{$age_group}->{$sex}++;
 		$known_yob_data{$id}->{'week_date_of_death'} = $week_date_of_death;
 		$known_yob_data{$id}->{'year_of_birth_end'}  = $year_of_birth_end;
@@ -280,11 +309,8 @@ sub compute_age_groups_sexes_offsets {
 	say $out_deaths "year,week,age_group,sex,mzcr_deaths,eurostat_deaths,mzcr_minus_eurostats";
 	for my $year (sort{$a <=> $b} keys %mzcr_deaths) {
 		for my $week (sort{$a <=> $b} keys %{$mzcr_deaths{$year}}) {
-			if ($year eq 2020) {
-				next if $week < 10;
-			} elsif ($year eq 2024) {
-				next;
-			}
+			if ($year == 2020) { next if $week < 10; }
+			elsif ($year == 2024) { next; }
 			for my $age_group (@age_groups) {
 				for my $sex (@sexes) {
 					my $eurostat_deaths      = $eurostat_deaths{$year}->{$week}->{$age_group}->{$sex} // 0;
@@ -332,8 +358,7 @@ sub load_no_yob_deaths {
 			$sex = 'U';
 		}
 		if ($week_date_of_death) {
-			my ($death_year) = split '-', $week_date_of_death;
-			my $death_week   = ymd_to_iso_week($week_date_of_death);
+			my ($death_year, $death_week) = ymd_to_iso_year_week($week_date_of_death);
 			$no_yob_deaths{$death_year}->{$death_week}->{$sex}->{'total_deaths'}++;
 			if (!$year_of_birth_end) {
 				$unknown_yob_deaths++;
@@ -354,165 +379,366 @@ sub load_no_yob_deaths {
 	say "-" x 50;
 }
 
-for my $year (sort{$a <=> $b} keys %no_yob_deaths) {
-	for my $week (sort{$a <=> $b} keys %{$no_yob_deaths{$year}}) {
-		next unless exists $weeks_requiring_imputation{$year}->{$week} && exists $no_yob_deaths{$year}->{$week};
+# ---- helper: largest-remainder apportionment with caps (integers) ----
+sub apportion_with_caps {
+    my ($total, $items) = @_; 
+    # $items = [ [ key, weight, cap ], ... ]
+    my %alloc = map { $_->[0] => 0 } @$items;
+    return %alloc if $total <= 0 || !@$items;
 
-		# Fetching how many unknown deaths we can impute on this specific week.
-		my $weekly_unknown_sex_unknown_available = $no_yob_deaths{$year}->{$week}->{'U'}->{'total_deaths_with_no_dob'} // 0;
+    # keep only items with positive cap
+    my @rows = grep { $_->[2] > 0 } @$items;
+    return %alloc unless @rows;
 
-		# Fetching attribution data : how many deaths known (for control), how many are missing.
-		my ($weekly_total_eurostat_deaths, $weekly_total_known_yob_mzcr_deaths, $weekly_total_to_attribute, $weekly_total_same_sex_unknown_available) = (0, 0, 0, 0);
-		for my $age_group (sort keys %{$weeks_requiring_imputation{$year}->{$week}}) {
-			my ($from_year, $to_year) = split '-', $age_group;
-			for my $sex (sort keys %{$weeks_requiring_imputation{$year}->{$week}->{$age_group}}) {
-				$weekly_total_eurostat_deaths += $weeks_requiring_imputation{$year}->{$week}->{$age_group}->{$sex}->{'eurostat_deaths'};
-				$weekly_total_known_yob_mzcr_deaths += $weeks_requiring_imputation{$year}->{$week}->{$age_group}->{$sex}->{'mzcr_deaths'};
-				$weekly_total_to_attribute += $weeks_requiring_imputation{$year}->{$week}->{$age_group}->{$sex}->{'missing_in_mzcr'};
-				my $same_sex_unknown_available = $no_yob_deaths{$year}->{$week}->{$sex}->{'total_deaths_with_no_dob'} // 0;
-				$weekly_total_same_sex_unknown_available += $same_sex_unknown_available;
-			}
-		}
+    my $sum_w = 0;
+    $sum_w += $_->[1] for @rows;
+    # if all weights are zero, just fill in order up to caps
+    if ($sum_w <= 0) {
+        my $rem = $total;
+        for my $r (@rows) {
+            last if $rem <= 0;
+            my $take = $r->[2] < $rem ? $r->[2] : $rem;
+            $alloc{$r->[0]} = $take;
+            $rem -= $take;
+        }
+        return %alloc;
+    }
 
-		# % of weekly deaths "available" & % of share in each group.
-		my $overall_available    = $weekly_total_same_sex_unknown_available + $weekly_unknown_sex_unknown_available;
-		my $weekly_available_pct = nearest(0.001, $overall_available * 100 / $weekly_total_to_attribute);
-		say "-" x 50;
-		say "year                                    : $year";
-		say "week                                    : $week";
-		say "weekly_total_eurostat_deaths            : $weekly_total_eurostat_deaths";
-		say "weekly_total_known_yob_mzcr_deaths      : $weekly_total_known_yob_mzcr_deaths";
-		say "weekly_total_to_attribute               : $weekly_total_to_attribute";
-		say "weekly_unknown_sex_unknown_available    : $weekly_unknown_sex_unknown_available";
-		say "weekly_total_same_sex_unknown_available : $weekly_total_same_sex_unknown_available";
-		say "weekly_available_pct                    : $weekly_available_pct %";
-		# $weekly_deaths_imputations{$year}->{$week}->{'weekly_total_to_attribute'}   = $weekly_total_to_attribute;
-		# $weekly_deaths_imputations{$year}->{$week}->{'total_available'}      = $total_available;
-		# $weekly_deaths_imputations{$year}->{$week}->{'weekly_available_pct'} = $weekly_available_pct;
+    # quotas, floors (capped), remainders
+    my $allocated = 0;
+    my @quota_rows;
+    for my $r (@rows) {
+        my ($key, $w, $cap) = @$r;
+        my $q = $total * ($w / $sum_w);
+        my $f = int($q);
+        $f = $cap if $f > $cap;         # respect cap
+        push @quota_rows, [$key, $w, $cap, $q, $f, ($q - $f)];
+        $allocated += $f;
+    }
 
-		# Total deaths to be attributed in each group : either on known sex (default) or imputed sex.
-		for my $age_group (sort keys %{$weeks_requiring_imputation{$year}->{$week}}) {
-			my ($from_year, $to_year) = split '-', $age_group;
-			for my $sex (sort keys %{$weeks_requiring_imputation{$year}->{$week}->{$age_group}}) {
-				my $missing_in_mzcr                 = $weeks_requiring_imputation{$year}->{$week}->{$age_group}->{$sex}->{'missing_in_mzcr'} // next;
-				my $eurostat_deaths                 = $weeks_requiring_imputation{$year}->{$week}->{$age_group}->{$sex}->{'eurostat_deaths'} // die;
-				my $same_sex_unknown_available      = $no_yob_deaths{$year}->{$week}->{$sex}->{'total_deaths_with_no_dob'} // 0;
-				my $age_group_share_of_total_deaths = nearest(0.001, $eurostat_deaths * 100 / $weekly_total_eurostat_deaths);
-				my $deaths_to_attrib_on_ag_sex      = nearest(1, ($overall_available * $age_group_share_of_total_deaths / 100) * $weekly_available_pct / 100);
-				say "-" x 50;
-				say "age_group                               : $age_group";
-				say "sex                                     : $sex";
-				say "missing_in_mzcr                         : $missing_in_mzcr";
-				say "eurostat_deaths                         : $eurostat_deaths";
-				say "same_sex_unknown_available              : $same_sex_unknown_available %";
-				say "age_group_share_of_total_deaths         : $age_group_share_of_total_deaths %";
-				say "deaths_to_attrib_on_ag_sex              : $deaths_to_attrib_on_ag_sex";
-			}
-		}
-		die;
-		# for my $from_year (sort{$a <=> $b} keys %ages_to_attrib) {
-		# 	my $age_group = $ages_to_attrib{$from_year}->{'age_group'} // die;
-		# 	for my $sex (sort keys %{$ages_to_attrib{$from_year}->{'sexes'}}) {
-		# 		my $eurostat_deaths = $ages_to_attrib{$from_year}->{'sexes'}->{$sex}->{'eurostat_deaths'} // die;
-		# 		my $share_of_total_deaths = nearest(0.001, $eurostat_deaths * 100 / $weekly_total_to_attribute);
-		# 		my $deaths_to_attrib = nearest(1, ($eurostat_deaths * $weekly_available_pct / 100 * $share_of_total_deaths / 100));
-		# 		$weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$age_group}->{$sex}->{'eurostat_deaths'}       = $eurostat_deaths;
-		# 		$weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$age_group}->{$sex}->{'deaths_to_attrib'}      = $deaths_to_attrib;
-		# 		$weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$age_group}->{$sex}->{'share_of_total_deaths'} = $share_of_total_deaths;
-		# 	}
-		# }
-		# # p$no_yob_deaths{$year}->{$week};
-		# # die;
-	}
-}
-say "-" x 50;
+    my $remain = $total - $allocated;
+    if ($remain > 0) {
+        # assign remaining units by largest fractional part, still respecting caps
+        for my $row (sort { $b->[5] <=> $a->[5] } @quota_rows) {
+            last if $remain <= 0;
+            next if $row->[4] >= $row->[2];   # at cap
+            $row->[4]++; 
+            $remain--;
+        }
+    } elsif ($remain < 0) {
+        # over-allocated due to caps interaction: remove from smallest remainders first
+        for my $row (sort { $a->[5] <=> $b->[5] } @quota_rows) {
+            last if $remain >= 0;
+            next if $row->[4] <= 0;
+            $row->[4]--;
+            $remain++;
+        }
+    }
 
-__END__
-
-# p%no_yob_deaths;
-
-# Ensure output dir exists
-my $out_path = 'outputs/layer_3_deaths_by_ages_and_sexes.csv';
-make_path('outputs') unless -d 'outputs';
-
-# Prefer Text::CSV_XS, fall back to Text::CSV
-my $csv;
-BEGIN {
-    eval { require Text::CSV_XS; Text::CSV_XS->import(); 1 }
-      ? ($csv = Text::CSV_XS->new({ binary => 1, eol => "\n" }))
-      : do { require Text::CSV; Text::CSV->import(); $csv = Text::CSV->new({ binary => 1, eol => "\n" }) };
+    %alloc = map { $_->[0] => $_->[4] } @quota_rows;
+    return %alloc;
 }
 
-open my $fh, '>:encoding(UTF-8)', $out_path or die "Can't write $out_path: $!";
+sub calculate_weekly_imputations {
+    for my $year (sort { $a <=> $b } keys %no_yob_deaths) {
+        for my $week (sort { $a <=> $b } keys %{ $no_yob_deaths{$year} }) {
+            next unless exists $weeks_requiring_imputation{$year}->{$week};
+            # pools available this week
+            my $avail_U = $no_yob_deaths{$year}->{$week}->{'U'}->{'total_deaths_with_no_dob'} // 0;
+            my %avail_same = (
+                M => ($no_yob_deaths{$year}->{$week}->{'M'}->{'total_deaths_with_no_dob'} // 0),
+                F => ($no_yob_deaths{$year}->{$week}->{'F'}->{'total_deaths_with_no_dob'} // 0),
+            );
 
-# Header
-$csv->print($fh, [
-    'year',
-    'week',
-    'age_group',
-    'sex',
-    'eurostat_deaths',
-    'deaths_to_attrib',
-    'share_of_total_deaths',
-    'weekly_total_to_attribute',
-    'total_available',
-    'weekly_available_pct',
-]);
+            # collect all bins (age_group, sex) with deficits + eurostat weights
+            my %bin_need;     # key "age|sex" => remaining deficit
+            my %bin_weight;   # key "age|sex" => eurostat_deaths weight
+            my ($weekly_total_eurostat_deaths, $weekly_total_to_attribute) = (0, 0);
 
-for my $year (sort { $a <=> $b } keys %weekly_deaths_imputations) {
-    for my $week (sort { $a <=> $b } keys %{ $weekly_deaths_imputations{$year} }) {
+            for my $age_group (keys %{ $weeks_requiring_imputation{$year}->{$week} }) {
+                for my $sex (keys %{ $weeks_requiring_imputation{$year}->{$week}->{$age_group} }) {
+                    my $need   = $weeks_requiring_imputation{$year}->{$week}->{$age_group}->{$sex}->{'missing_in_mzcr'} // 0;
+                    next unless $need > 0;
+                    my $w      = $weeks_requiring_imputation{$year}->{$week}->{$age_group}->{$sex}->{'eurostat_deaths'} // 0;
+                    my $k = "$age_group|$sex";
+                    $bin_need{$k}   = $need;
+                    $bin_weight{$k} = $w;
+                    $weekly_total_eurostat_deaths += $w;
+                    $weekly_total_to_attribute    += $need;
+                }
+            }
+            next if $weekly_total_to_attribute <= 0;  # nothing to do this week
 
-        my $weekly_total_to_attribute   = $weekly_deaths_imputations{$year}->{$week}->{'weekly_total_to_attribute'}   // 0;
-        my $total_available      = $weekly_deaths_imputations{$year}->{$week}->{'total_available'}      // 0;
-        my $weekly_available_pct = $weekly_deaths_imputations{$year}->{$week}->{'weekly_available_pct'} // 0;
+            # Init container
+            $weekly_deaths_imputations{$year}->{$week} = {
+                'weekly_total_eurostat_deaths'            => $weekly_total_eurostat_deaths,
+                'weekly_total_known_yob_mzcr_deaths'      => 0,  # not needed for allocation; fill if you want
+                'weekly_total_to_attribute'               => $weekly_total_to_attribute,
+                'weekly_unknown_sex_unknown_available'    => $avail_U,
+                'weekly_total_same_sex_unknown_available' => ($avail_same{M} + $avail_same{F}),
+                'weekly_overall_unknown_yob_available'    => ($avail_U + $avail_same{M} + $avail_same{F}),
+                'age_groups'                              => {},
+            };
 
-        my $groups = $weekly_deaths_imputations{$year}->{$week}->{'age_groups'} // {};
-        for my $age_group (sort {
-                my ($af,$at) = split /-/, $a;
-                my ($bf,$bt) = split /-/, $b;
-                ($af <=> $bf) || ($at <=> $bt)
-            } keys %$groups) {
+            # Stage A: SAME-SEX pool per sex (M & F)
+            for my $sex (qw(M F)) {
+                my $avail = $avail_same{$sex} // 0;
+                next if $avail <= 0;
 
-            for my $sex (sort keys %{ $groups->{$age_group} }) {
-                my $eurostat_deaths       = $groups->{$age_group}->{$sex}->{'eurostat_deaths'}       // 0;
-                my $deaths_to_attrib      = $groups->{$age_group}->{$sex}->{'deaths_to_attrib'}      // 0;
-                my $share_of_total_deaths = $groups->{$age_group}->{$sex}->{'share_of_total_deaths'} // 0;
+                # items of this sex with remaining need
+                my @items;
+                for my $k (grep { /\|$sex\z/ } keys %bin_need) {
+                    my ($ag) = split /\|/, $k;
+                    my $cap  = $bin_need{$k};
+                    my $w    = $bin_weight{$k} // 0;
+                    push @items, [ $k, $w, $cap ] if $cap > 0;
+                }
+                next unless @items;
 
-                $csv->print($fh, [
-                    $year,
-                    $week,
-                    $age_group,
-                    $sex,
-                    $eurostat_deaths,
-                    $deaths_to_attrib,
-                    $share_of_total_deaths,
-                    $weekly_total_to_attribute,
-                    $total_available,
-                    $weekly_available_pct,
-                ]);
+                my %alloc = apportion_with_caps($avail, \@items);
+                # apply allocation & write to structure
+                for my $k (keys %alloc) {
+                    my ($ag, $sx) = split /\|/, $k;
+                    my $x = $alloc{$k} // 0;
+                    next if $x <= 0;
+                    $bin_need{$k} -= $x;
+
+                    $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx} //= {};
+                    # We will CONSUME this field later during assignment:
+                    $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'same_sex_unknown_available'} = $x;
+
+                    # also store reference values for output/debug
+                    $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'missing_in_mzcr'}  //= ($x + $bin_need{$k});
+                    $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'eurostat_deaths'}  //= ($bin_weight{$k} // 0);
+                }
+            }
+
+            # Stage B: UNKNOWN-SEX pool across all remaining deficits
+            if ($avail_U > 0) {
+                my @items;
+                for my $k (keys %bin_need) {
+                    my ($ag, $sx) = split /\|/, $k;
+                    my $cap = $bin_need{$k};
+                    next unless $cap > 0;
+                    my $w   = $bin_weight{$k} // 0;
+                    push @items, [ $k, $w, $cap ];
+                }
+
+                if (@items) {
+                    my %alloc = apportion_with_caps($avail_U, \@items);
+                    for my $k (keys %alloc) {
+                        my ($ag, $sx) = split /\|/, $k;
+                        my $x = $alloc{$k} // 0;
+                        next if $x <= 0;
+                        $bin_need{$k} -= $x;
+
+                        $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx} //= {};
+                        $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'unknown_sex_to_attrib'} = $x;
+                        $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'missing_in_mzcr'}  //= ($x + $bin_need{$k});
+                        $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'eurostat_deaths'}  //= ($bin_weight{$k} // 0);
+                    }
+                }
+            }
+
+            # For completeness: for any bin that never got set above, still record baseline fields
+            for my $k (keys %bin_need) {
+                my ($ag, $sx) = split /\|/, $k;
+                $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx} //= {};
+                $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'missing_in_mzcr'}  //= $weeks_requiring_imputation{$year}->{$week}->{$ag}->{$sx}->{'missing_in_mzcr'} // 0;
+                $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'eurostat_deaths'}  //= $weeks_requiring_imputation{$year}->{$week}->{$ag}->{$sx}->{'eurostat_deaths'} // 0;
+                $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'unknown_sex_to_attrib'} //= 0;
+                $weekly_deaths_imputations{$year}->{$week}->{'age_groups'}->{$ag}->{$sx}->{'same_sex_unknown_available'} //= 0;
             }
         }
     }
+    say "-" x 50;
 }
 
-close $fh or warn "Couldn't close $out_path: $!";
+sub print_imputation_details {
+	# --- Ensure output dir exists ---
+	my $out_path = 'outputs/layer_3_deaths_yob_imputation_by_by_ages_and_sexes.csv';
+	make_path('outputs') unless -d 'outputs';
 
-say "Wrote $out_path";
+	open my $fh, '>:encoding(UTF-8)', $out_path or die "Can't write $out_path: $!";
+	# Header
+	$csv->print($fh, [
+	    'year',
+	    'week',
+	    'age_group',
+	    'sex',
+	    'weekly_total_eurostat_deaths',
+	    'weekly_total_known_yob_mzcr_deaths',
+	    'weekly_total_to_attribute',
+	    'weekly_unknown_sex_unknown_available',
+	    'weekly_available_pct',
+	    'weekly_total_same_sex_unknown_available',
+	    'weekly_overall_unknown_yob_available',
+	    'missing_in_mzcr',
+	    'eurostat_deaths',
+	    'eurostat_age_group_share_of_total_deaths',
+	    'deaths_to_attrib_on_ag_sex',
+	    'unknown_sex_to_attrib',
+	    'same_sex_unknown_available',
+	]);
 
-# --- Outputting the imputed deaths ---
-open my $out_imput, '>', 'outputs/imputation_layer_3.csv';
-say $out_imput "id,sex,year_of_birth_end,week_date_of_death,age_at_death";
-my $total_ids = keys %no_yob_ids;
-my $current = 0;
-for my $id (sort keys %no_yob_ids) {
-	my $sex        = $no_yob_ids{$id}->{'sex'}        // die;
-	my $death_year = $no_yob_ids{$id}->{'death_year'} // die;
-	my $death_week = $no_yob_ids{$id}->{'death_week'} // die;
-	my $from_year  = $no_yob_ids{$id}->{'from_year'}  // die;
-	my $to_year    = $no_yob_ids{$id}->{'to_year'}    // die;
-	STDOUT->printflush("\rImputing unknown DOB/Gender who died - MZCR - [$current / $out_imput]");
+	for my $year (sort { $a <=> $b } keys %weekly_deaths_imputations) {
+	    for my $week (sort { $a <=> $b } keys %{ $weekly_deaths_imputations{$year} }) {
 
+	        my $weekly_total_eurostat_deaths            = $weekly_deaths_imputations{$year}->{$week}->{'weekly_total_eurostat_deaths'}            // 0;
+	        my $weekly_total_known_yob_mzcr_deaths      = $weekly_deaths_imputations{$year}->{$week}->{'weekly_total_known_yob_mzcr_deaths'}      // 0;
+	        my $weekly_total_to_attribute               = $weekly_deaths_imputations{$year}->{$week}->{'weekly_total_to_attribute'}               // 0;
+	        my $weekly_unknown_sex_unknown_available    = $weekly_deaths_imputations{$year}->{$week}->{'weekly_unknown_sex_unknown_available'}    // 0;
+	        my $weekly_available_pct                    = $weekly_deaths_imputations{$year}->{$week}->{'weekly_available_pct'}                    // 0;
+	        my $weekly_total_same_sex_unknown_available = $weekly_deaths_imputations{$year}->{$week}->{'weekly_total_same_sex_unknown_available'} // 0;
+	        my $weekly_overall_unknown_yob_available    = $weekly_deaths_imputations{$year}->{$week}->{'weekly_overall_unknown_yob_available'}    // 0;
+
+	        my $groups = $weekly_deaths_imputations{$year}->{$week}->{'age_groups'} // {};
+	        for my $age_group (sort {
+	                my ($af,$at) = split /-/, $a;
+	                my ($bf,$bt) = split /-/, $b;
+	                ($af <=> $bf) || ($at <=> $bt)
+	            } keys %$groups) {
+
+	            for my $sex (sort keys %{ $groups->{$age_group} }) {
+	                my $missing_in_mzcr                          = $groups->{$age_group}->{$sex}->{'missing_in_mzcr'}                          // 0;
+	                my $eurostat_deaths                          = $groups->{$age_group}->{$sex}->{'eurostat_deaths'}                          // 0;
+	                my $eurostat_age_group_share_of_total_deaths = $groups->{$age_group}->{$sex}->{'eurostat_age_group_share_of_total_deaths'} // 0;
+	                my $deaths_to_attrib_on_ag_sex               = $groups->{$age_group}->{$sex}->{'deaths_to_attrib_on_ag_sex'}               // 0;
+	                my $unknown_sex_to_attrib                    = $groups->{$age_group}->{$sex}->{'unknown_sex_to_attrib'}                    // 0;
+	                my $same_sex_unknown_available               = $groups->{$age_group}->{$sex}->{'same_sex_unknown_available'}               // 0;
+
+	                $csv->print($fh, [
+						$year,
+						$week,
+						$age_group,
+						$sex,
+						$weekly_total_eurostat_deaths,
+						$weekly_total_known_yob_mzcr_deaths,
+						$weekly_total_to_attribute,
+						$weekly_unknown_sex_unknown_available,
+						$weekly_available_pct,
+						$weekly_total_same_sex_unknown_available,
+						$weekly_overall_unknown_yob_available,
+						$missing_in_mzcr,
+						$eurostat_deaths,
+						$eurostat_age_group_share_of_total_deaths,
+						$deaths_to_attrib_on_ag_sex,
+						$unknown_sex_to_attrib,
+						$same_sex_unknown_available
+	                ]);
+	            }
+	        }
+	    }
+	}
+	close $fh or warn "Couldn't close $out_path: $!";
+	say "Wrote $out_path";
 }
 
-close $out_imput;
-say "";
+sub print_known_dob_deaths {
+	my $total_ids = keys %known_yob_data;
+	my $current = 0;
+	for my $id (sort keys %known_yob_data) {
+		$current++;
+		my $sex                = $known_yob_data{$id}->{'sex'}                // die;
+		my $death_year         = $known_yob_data{$id}->{'death_year'}         // die;
+		my $death_week         = $known_yob_data{$id}->{'death_week'}         // die;
+		my $age_group          = $known_yob_data{$id}->{'age_group'}          // die;
+		my $week_date_of_death = $known_yob_data{$id}->{'week_date_of_death'} // die;
+		my $year_of_birth_end  = $known_yob_data{$id}->{'year_of_birth_end'}  // die;
+		my $age_at_death       = $known_yob_data{$id}->{'age_at_death'}       // die;
+		STDOUT->printflush("\rPrinting known DOB/Gender who died - MZCR - [$current / $total_ids]");
+		say $out_imput "$id,$sex,$year_of_birth_end,$week_date_of_death,$age_at_death,$death_year,$death_week,$age_group";
+	}
+	say "";
+}
+
+sub impute_to_unknown_yob_sex {
+	my %quick_check = ();
+	# p%weekly_deaths_imputations;
+	my $total_ids = keys %no_yob_ids;
+	my $current = 0;
+	my $non_attributed = 0;
+	my $total_attributed = 0;
+	for my $id (sort keys %no_yob_ids) {
+		$current++;
+		my $week_date_of_death = $no_yob_ids{$id}->{'week_date_of_death'} // die;
+		my $death_year = $no_yob_ids{$id}->{'death_year'}                 // die;
+		my $death_week = $no_yob_ids{$id}->{'death_week'}                 // die;
+		my $sex        = $no_yob_ids{$id}->{'sex'}                        // die;
+		STDOUT->printflush("\rImputing unknown DOB/Gender who died - MZCR - [$current / $total_ids]");
+		my $subject_attributed = 0;
+		my $age_group;
+		if ($sex ne 'U') { # If we sex isn't undetermined, we attribute it to a cohort for which an age has been attributed.
+	        my $groups = $weekly_deaths_imputations{$death_year}->{$death_week}->{'age_groups'} // {};
+	        for my $ag (sort {
+	                my ($af,$at) = split /-/, $a;
+	                my ($bf,$bt) = split /-/, $b;
+	                ($af <=> $bf) || ($at <=> $bt)
+	            } keys %$groups) {
+
+	            for my $sx (sort keys %{ $groups->{$ag} }) {
+	            	next unless $sx eq $sex;
+	            	next unless $groups->{$ag}->{$sx}->{'same_sex_unknown_available'};
+	            	my $same_sex_unknown_available = $groups->{$ag}->{$sx}->{'same_sex_unknown_available'} // die;
+	            	next unless $same_sex_unknown_available;
+
+	            	# Attributes the target to this cohort.
+	            	$age_group = $ag;
+	            	$subject_attributed = 1;
+	            	$same_sex_unknown_available = $same_sex_unknown_available - 1;
+            		$weekly_deaths_imputations{$death_year}->{$death_week}->{'age_groups'}->{$ag}->{$sx}->{'same_sex_unknown_available'} = $same_sex_unknown_available;
+	            	last;
+	            }
+	        	last if $subject_attributed;
+	        }
+		} else { # Otherwise, we attribute the death to a sex & age which is expecting for an imputation.
+	        my $groups = $weekly_deaths_imputations{$death_year}->{$death_week}->{'age_groups'} // {};
+	        for my $ag (sort {
+	                my ($af,$at) = split /-/, $a;
+	                my ($bf,$bt) = split /-/, $b;
+	                ($af <=> $bf) || ($at <=> $bt)
+	            } keys %$groups) {
+
+	            for my $sx (sort keys %{ $groups->{$ag} }) {
+	            	next unless $groups->{$ag}->{$sx}->{'unknown_sex_to_attrib'};
+	            	my $unknown_sex_to_attrib = $groups->{$ag}->{$sx}->{'unknown_sex_to_attrib'} // die;
+	            	next unless $unknown_sex_to_attrib;
+
+	            	# Attributes the target to this cohort.
+	            	$age_group = $ag;
+	            	$sex = $sx;
+	            	$subject_attributed = 1;
+	            	$unknown_sex_to_attrib = $unknown_sex_to_attrib - 1;
+            		$weekly_deaths_imputations{$death_year}->{$death_week}->{'age_groups'}->{$ag}->{$sx}->{'unknown_sex_to_attrib'} = $unknown_sex_to_attrib;
+	            	last;
+	            }
+	        	last if $subject_attributed;
+	        }
+		}
+		unless ($age_group) {
+			$non_attributed++;
+			next;
+		}
+		my ($from_year)        = split '-', $age_group;
+		my $year_of_birth_end  = $death_year - $from_year;
+		my $age_at_death       = $death_year - $year_of_birth_end;
+		$quick_check{$age_group} = $year_of_birth_end;
+		say $out_imput "$id,$sex,$year_of_birth_end,$week_date_of_death,$age_at_death,$death_year,$death_week,$age_group";
+		$total_attributed++;
+		# say "id                 : $id";
+		# say "sex                : $sex";
+		# say "age_group          : $age_group";
+		# say "year_of_birth_end  : $year_of_birth_end";
+		# say "week_date_of_death : $week_date_of_death";
+		# say "age_at_death       : $age_at_death";
+		# say "death_year         : $death_year";
+		# say "death_week         : $death_week";
+
+	}
+	say "";
+	p%quick_check;
+	say "-" x 50;
+	say "non_attributed     : $non_attributed";
+	say "total_attributed   : $total_attributed";
+	say "-" x 50;
+}
