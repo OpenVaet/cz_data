@@ -150,7 +150,7 @@ to_iso_monday_safe <- function(x) {
 
 # --- Keep only people alive on 2024-01-01 -----------------------------------
 df_alive_2024 <- df %>%
-  mutate(death_week_date = to_iso_monday_safe(DateOfDeathInHealthcareFacility)) %>%
+  mutate(death_week_date = to_iso_monday_safe(week_date_of_death)) %>%
   filter(is.na(death_week_date) | death_week_date >= as.Date("2024-01-01")) %>%
   select(-death_week_date)
 
@@ -196,41 +196,96 @@ mzcr_max_counts <- mzcr_age_ranges %>%
   count(bin_start, name = "MZCR Max. Age") %>%
   mutate(`Age Group` = sprintf("%02d–%02d", bin_start, bin_start + 4L))
 
-# --- Join with Eurostat and add an "Unknown" row (YearOfBirth NA) ------------
+# --- Map each record to a 5y age group by MEAN YOB (counts) ------------------
+mzcr_mean_counts <- df_known_yob %>%
+  transmute(
+    mean_yob  = (year_of_birth_start + year_of_birth_end) / 2
+  ) %>%
+  mutate(
+    # Age as of 2024-01-01 from mean YOB. We floor to integer for binning.
+    mean_age  = REF_YEAR - mean_yob,
+    mean_age  = pmax(0, pmin(mean_age, max_eu_age)),
+    mean_agei = as.integer(floor(mean_age)),
+    bin_start = (mean_agei %/% 5) * 5
+  ) %>%
+  count(bin_start, name = "MZCR Mean Age") %>%
+  mutate(`Age Group` = sprintf("%02d–%02d", bin_start, bin_start + 4L))
+
+# --- Join Min/Mean/Max with Eurostat and add an "Unknown" row ----------------
 out_tbl <- full_join(mzcr_min_counts, mzcr_max_counts, by = c("bin_start","Age Group")) %>%
-  full_join(eu_2024_5, by = c("bin_start","Age Group")) %>%
+  full_join(mzcr_mean_counts, by = c("bin_start","Age Group")) %>%
+  full_join(eu_2024_5,       by = c("bin_start","Age Group")) %>%
   arrange(bin_start) %>%
-  select(`Age Group`, `MZCR Min. Age`, `MZCR Max. Age`, `EuroStat 2024`) %>%
-  tidyr::replace_na(list(`MZCR Min. Age` = 0L, `MZCR Max. Age` = 0L, `EuroStat 2024` = 0))
+  select(`Age Group`, `MZCR Min. Age`, `MZCR Mean Age`, `MZCR Max. Age`, `EuroStat 2024`) %>%
+  tidyr::replace_na(list(
+    `MZCR Min. Age`  = 0L,
+    `MZCR Mean Age`  = 0L,
+    `MZCR Max. Age`  = 0L,
+    `EuroStat 2024`  = 0
+  ))
 
 # append Unknown totals (no Eurostat counterpart)
 unknown_row <- tibble(
-  `Age Group`      = "Unknown",
-  `MZCR Min. Age`  = unknown_total,
-  `MZCR Max. Age`  = unknown_total,
-  `EuroStat 2024`  = NA_real_
+  `Age Group`       = "Unknown",
+  `MZCR Min. Age`   = unknown_total,
+  `MZCR Mean Age`   = unknown_total,
+  `MZCR Max. Age`   = unknown_total,
+  `EuroStat 2024`   = NA_real_
 )
 
 out_tbl <- bind_rows(out_tbl, unknown_row)
 
-# --- Add differences to the table -------------------------------------------
+# --- Add differences to the table (now includes Mean) ------------------------
 out_tbl <- out_tbl %>%
   mutate(
-    `Diff (Min - EU)` = `MZCR Min. Age` - `EuroStat 2024`,
-    `Diff (Max - EU)` = `MZCR Max. Age` - `EuroStat 2024`
+    `Diff (Min - EU)`  = `MZCR Min. Age`  - `EuroStat 2024`,
+    `Diff (Mean - EU)` = `MZCR Mean Age`  - `EuroStat 2024`,
+    `Diff (Max - EU)`  = `MZCR Max. Age`  - `EuroStat 2024`
   )
 
-# Keep a print-friendly version (hide bin_start if it exists)
-out_tbl_print <- out_tbl %>%
-  select(-dplyr::any_of("bin_start"))
+# --- Summary rows: Positive / Negative / Absolute offsets --------------------
+sum_pos <- function(x) sum(x[x >= 0], na.rm = TRUE)
+sum_neg <- function(x) sum(x[x < 0],  na.rm = TRUE)
+sum_abs <- function(x) sum(abs(x),     na.rm = TRUE)
 
-knitr::kable(
+# exclude the 'Unknown' row from offset summaries
+diff_df <- out_tbl %>%
+  dplyr::filter(`Age Group` != "Unknown") %>%
+  dplyr::select(`Diff (Min - EU)`, `Diff (Mean - EU)`, `Diff (Max - EU)`)
+
+summary_rows <- tibble::tibble(
+  `Age Group`        = c("Positive offsets", "Negative offsets", "Absolute offsets"),
+  `MZCR Min. Age`    = NA_integer_,
+  `MZCR Mean Age`    = NA_integer_,
+  `MZCR Max. Age`    = NA_integer_,
+  `EuroStat 2024`    = NA_real_,
+  `Diff (Min - EU)`  = c(sum_pos(diff_df$`Diff (Min - EU)`),
+                         sum_neg(diff_df$`Diff (Min - EU)`),
+                         sum_abs(diff_df$`Diff (Min - EU)`)),
+  `Diff (Mean - EU)` = c(sum_pos(diff_df$`Diff (Mean - EU)`),
+                         sum_neg(diff_df$`Diff (Mean - EU)`),
+                         sum_abs(diff_df$`Diff (Mean - EU)`)),
+  `Diff (Max - EU)`  = c(sum_pos(diff_df$`Diff (Max - EU)`),
+                         sum_neg(diff_df$`Diff (Max - EU)`),
+                         sum_abs(diff_df$`Diff (Max - EU)`))
+)
+
+# append to the table
+out_tbl <- dplyr::bind_rows(out_tbl, summary_rows)
+
+# print
+out_tbl_print <- out_tbl
+
+# (optional) visually emphasize the 3 summary rows
+k <- knitr::kable(
   out_tbl_print,
-  caption = "Czechia — MZCR min/max vs Eurostat 2024 (5-year groups) with differences"
+  caption = "Czechia — MZCR min/mean/max vs Eurostat 2024 (5-year groups) with differences"
 ) %>%
   kableExtra::kable_styling(full_width = FALSE)
 
+k <- k %>% kableExtra::row_spec((nrow(out_tbl_print)-2):nrow(out_tbl_print), bold = TRUE)
 
+k
 
 # Exclude "Unknown" for plotting; order by bin_start if available
 plot_df <- out_tbl %>%

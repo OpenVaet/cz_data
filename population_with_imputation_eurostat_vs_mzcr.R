@@ -39,12 +39,21 @@ cat(sprintf("Loaded %d records from imputed file\n", nrow(df)))
 df_alive <- df %>%
   mutate(week_date_of_death = as.Date(week_date_of_death)) %>%
   filter(is.na(week_date_of_death) | week_date_of_death >= as.Date("2024-01-01")) %>%
-  filter(!is.na(year_of_birth_end), !is.na(Gender)) %>%
   mutate(
-    min_age = pmax(0L, 2024L - year_of_birth_end - 1L),
-    sex = ifelse(Gender == "1", "M", "F")
+    # use the same convention as the Perl weights
+    max_age = pmax(0L, 2024L - year_of_birth_end)
   ) %>%
-  filter(min_age >= 0, min_age <= 105)
+  filter(max_age >= 0)
+
+# Age bands (matching pre-imputation bins)
+bands_breaks <- c(-1, 14, 29, 49, 64, Inf)
+bands_labels <- c("0-14", "15-29", "30-49", "50-64", "65+")
+
+# Aggregate MZCR with *max_age*
+mzcr_agg <- df_alive %>%
+  mutate(age_group = cut(max_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
+  count(sex, age_group, name = "MZCR")
+
 
 cat(sprintf("Filtered to %d records alive on 2024-01-01\n", nrow(df_alive)))
 
@@ -52,9 +61,9 @@ cat(sprintf("Filtered to %d records alive on 2024-01-01\n", nrow(df_alive)))
 bands_breaks <- c(-1, 14, 29, 49, 64, Inf)
 bands_labels <- c("0-14", "15-29", "30-49", "50-64", "65+")
 
-# Aggregate MZCR (using min_age like pre-imputation)
+# Aggregate MZCR (using max_age like pre-imputation)
 mzcr_agg <- df_alive %>%
-  mutate(age_group = cut(min_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
+  mutate(age_group = cut(max_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
   count(sex, age_group, name = "MZCR")
 
 # Aggregate Eurostat
@@ -103,7 +112,7 @@ p <- ggplot(bars, aes(x = age_group, y = count, fill = series)) +
   scale_color_identity() +
   labs(
     title = "MZCR Imputed vs Eurostat 2024",
-    subtitle = "Using min_age calculation (matching pre-imputation comparison)",
+    subtitle = "Adjusted unknown cohort population",
     x = NULL, 
     y = "Population"
   ) +
@@ -135,3 +144,4 @@ overall <- data.frame(
 ) %>%
   mutate(Pct_Diff = 100 * Difference / Eurostat)
 print(overall)
+
