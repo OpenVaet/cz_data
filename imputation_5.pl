@@ -105,7 +105,7 @@ sub load_mzcr_origin {
     my ($cpt, $cur) = (0, 0);
     my ($csv_r, $fh, $headers, $idx) = open_csv_reader($mzcr_origin_file);
     open my $out, '>', 'data/mzcr_no_or_first_infection_with_imputation.csv';
-	say $out "id,sex,year_of_birth_end,age,age_group,age_at_death,week_date_of_death,Date_First_Dose,Date_Second_Dose,Date_Third_Dose,VaccinationProductCode_First_Dose,VaccinationProductCode_Second_Dose,VaccinationProductCode_Third_Dose";
+	say $out "id,sex,year_of_birth_end,age,age_group,age_at_death,week_date_of_death,Date_First_Dose,Date_Second_Dose,Date_Third_Dose,VaccinationProductCode_First_Dose,VaccinationProductCode_Second_Dose,VaccinationProductCode_Third_Dose,week_date_of_positivity";
     while (my $row = $csv_r->getline_hr($fh)) {
         $cur++; $cpt++;
         if ($cpt == 1000) { $cpt = 0; STDOUT->printflush("\rParsing MZCR - [$cur / $total_rows]"); }
@@ -130,6 +130,7 @@ sub load_mzcr_origin {
         my $VaccinationProductCode_First_Dose  = $row->{'VaccinationProductCode_First_Dose'}  // '';
         my $VaccinationProductCode_Second_Dose = $row->{'VaccinationProductCode_Second_Dose'} // '';
         my $VaccinationProductCode_Third_Dose  = $row->{'VaccinationProductCode_Third_Dose'}  // '';
+        my $week_date_of_positivity            = $row->{'week_date_of_positivity'}            // '';
 
         # Calculating age.
         my $age;
@@ -139,12 +140,12 @@ sub load_mzcr_origin {
 			$age = $death_year - $year_of_birth_end;
 			$age_at_death = $age;
 		} else {
-			$age = 2024 - $year_of_birth_end;
+			$age = 2024 - $year_of_birth_end - 1;
 		}
 		my ($from_year, $to_year) = from_year_to_year_from_age($age);
 		my $age_group = "$from_year-$to_year";
 
-		say $out "$id,$sex,$year_of_birth_end,$age,$age_group,$age_at_death,$week_date_of_death,$Date_First_Dose,$Date_Second_Dose,$Date_Third_Dose,$VaccinationProductCode_First_Dose,$VaccinationProductCode_Second_Dose,$VaccinationProductCode_Third_Dose";
+		say $out "$id,$sex,$year_of_birth_end,$age,$age_group,$age_at_death,$week_date_of_death,$Date_First_Dose,$Date_Second_Dose,$Date_Third_Dose,$VaccinationProductCode_First_Dose,$VaccinationProductCode_Second_Dose,$VaccinationProductCode_Third_Dose,$week_date_of_positivity";
 
     }
     close $out;

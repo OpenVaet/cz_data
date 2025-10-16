@@ -41,17 +41,17 @@ df_alive <- df %>%
   filter(is.na(week_date_of_death) | week_date_of_death >= as.Date("2024-01-01")) %>%
   mutate(
     # use the same convention as the Perl weights
-    max_age = pmax(0L, 2024L - year_of_birth_end)
+    min_age = pmax(0L, 2024L - year_of_birth_end - 1L)
   ) %>%
-  filter(max_age >= 0)
+  filter(min_age >= 0)
 
 # Age bands (matching pre-imputation bins)
 bands_breaks <- c(-1, 14, 29, 49, 64, Inf)
 bands_labels <- c("0-14", "15-29", "30-49", "50-64", "65+")
 
-# Aggregate MZCR with *max_age*
+# Aggregate MZCR with *min_age*
 mzcr_agg <- df_alive %>%
-  mutate(age_group = cut(max_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
+  mutate(age_group = cut(min_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
   count(sex, age_group, name = "MZCR")
 
 
@@ -61,9 +61,9 @@ cat(sprintf("Filtered to %d records alive on 2024-01-01\n", nrow(df_alive)))
 bands_breaks <- c(-1, 14, 29, 49, 64, Inf)
 bands_labels <- c("0-14", "15-29", "30-49", "50-64", "65+")
 
-# Aggregate MZCR (using max_age like pre-imputation)
+# Aggregate MZCR (using min_age like pre-imputation)
 mzcr_agg <- df_alive %>%
-  mutate(age_group = cut(max_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
+  mutate(age_group = cut(min_age, breaks = bands_breaks, labels = bands_labels, right = TRUE)) %>%
   count(sex, age_group, name = "MZCR")
 
 # Aggregate Eurostat

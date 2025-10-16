@@ -309,7 +309,8 @@ sub load_mzcr_pop {
         # We only consider people with NO death date (i.e., in the "population" pool).
         if (!$week_date_of_death) {
             if (defined $year_of_birth_end && $year_of_birth_end ne '') {
-                my $age_2024 = 2024 - $year_of_birth_end;
+                my $age_2024 = 2024 - $year_of_birth_end - 1;
+                $age_2024 = 0 if $age_2024 < 0;
                 my ($from_year, $to_year) = from_year_to_year_from_age($age_2024);
                 $mzcr_pop{$sex}->{"$from_year-$to_year"}++;
                 $mzcr_total_pop++;

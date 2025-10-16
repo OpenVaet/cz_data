@@ -241,8 +241,8 @@ df_aug_resolved <- df_aug %>%
       TRUE                                  ~ "latest_due_to_large_offset"
     ),
     age_at_death = dplyr::if_else(
-      !is.na(year_of_birth_start) & !is.na(week_date_of_death),
-      lubridate::year(week_date_of_death) - year_of_birth_start,
+      !is.na(year_of_birth_end) & !is.na(week_date_of_death),
+      lubridate::year(week_date_of_death) - year_of_birth_end,
       NA_integer_
     )
   )
@@ -283,8 +283,8 @@ report_missing <- function(d, name) {
   n_all <- nrow(d)
   
   # derive numeric year if not already present
-  yob_num <- if ("year_of_birth_start" %in% names(d)) {
-    d$year_of_birth_start
+  yob_num <- if ("year_of_birth_end" %in% names(d)) {
+    d$year_of_birth_end
   } else {
     suppressWarnings(as.integer(sub("-.*", "", d$YearOfBirth)))
   }

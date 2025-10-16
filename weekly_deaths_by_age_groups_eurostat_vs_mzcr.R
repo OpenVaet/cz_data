@@ -324,10 +324,6 @@ ggplot() +
     plot.subtitle= element_text(size = 13)
   )
 
-
-
-
-
 # ================================================================
 # Per–age-group comparisons: MZCR (blue) vs Eurostat (red)
 # ================================================================
