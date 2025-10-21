@@ -174,3 +174,59 @@ ggplot(weekly_combined, aes(x = week_start)) +
     axis.text.x = element_text(angle = 45, hjust = 1),
     legend.position = "top"
   )
+
+# =============================================================================
+# Export weekly deaths series for reuse (CSV + RDS)
+# =============================================================================
+out_dir <- "out"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# Wide format: one row per ISO week with both series and handy extras
+weekly_deaths_wide <- weekly_combined %>%
+  arrange(week_start) %>%
+  mutate(
+    iso_week     = strftime(week_start, "%G-W%V"),
+    cum_official = cumsum(deaths_official),
+    cum_file     = cumsum(deaths_file),
+    diff         = deaths_official - deaths_file
+  ) %>%
+  transmute(
+    week_date      = as.Date(week_start),
+    iso_week,
+    deaths_official,
+    deaths_file,
+    diff,
+    cum_official,
+    cum_file
+  )
+
+# Long (tidy) format: perfect for ggplot/pipelines
+weekly_deaths_long <- weekly_long %>%
+  arrange(week_start, series) %>%
+  mutate(
+    iso_week = strftime(week_start, "%G-W%V")
+  ) %>%
+  select(
+    week_date = week_start,
+    iso_week,
+    series,        # "Official (sum of dailyDeaths)" / "Weekly (from date_death)"
+    deaths
+  )
+
+# Write files
+write.csv(weekly_deaths_wide, file.path(out_dir, "weekly_covid_deaths_wide.csv"), row.names = FALSE)
+write.csv(weekly_deaths_long, file.path(out_dir, "weekly_covid_deaths_long.csv"), row.names = FALSE)
+
+# RDS bundle for quick loading
+saveRDS(
+  list(
+    weekly_wide = weekly_deaths_wide,
+    weekly_long = weekly_deaths_long
+  ),
+  file.path(out_dir, "weekly_covid_deaths.rds")
+)
+
+message("Saved: ",
+        file.path(out_dir, "weekly_covid_deaths_wide.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_deaths_long.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_deaths.rds"))

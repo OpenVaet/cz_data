@@ -5,6 +5,8 @@ library(lubridate)
 library(stringr)
 library(parallel)
 library(ISOweek)
+if (!requireNamespace("slider", quietly = TRUE)) install.packages("slider")
+library(slider)
 
 # ============================================================================
 # European Standard Population 2013 (ESP 2013)
@@ -84,7 +86,7 @@ data <- data_raw %>%
   # EXCLUDE <15 at BASELINE
   mutate(age_at_baseline = as.integer(lubridate::year(baseline_date) - year_of_birth)) %>%
   filter(age_at_baseline >= 15, age_at_baseline <= 120) %>%
-  select(ID, year_of_birth, dv1, date_positivity, date_death)
+  select(id, year_of_birth, dv1, date_positivity, date_death)
 
 cat("Prepared data (15+ at baseline):\n")
 cat("  - Rows:", nrow(data), "\n")
@@ -449,19 +451,35 @@ asmr_for_plot <- results_nonzero %>%
                         levels = c("asmr_total","asmr_v","asmr_s"),
                         labels = c("Overall (15+)","Vaccinated (15+)","Unvaccinated (15+)")))
 
-p <- ggplot(asmr_for_plot, aes(x = date, y = asmr, color = group)) +
-  geom_line(linewidth = 1.2) +
-  scale_color_manual(values = c("Overall (15+)" = "black",
-                                "Vaccinated (15+)" = "#D55E00",
-                                "Unvaccinated (15+)" = "#009E73")) +
-  scale_y_continuous(labels = comma, limits = c(0, NA)) +
+# 5-week centered moving average (+2, current, -2)
+asmr_for_plot_ma <- asmr_for_plot %>%
+  arrange(group, date) %>%
+  group_by(group) %>%
+  mutate(
+    asmr_ma5 = slide_dbl(asmr, mean, .before = 2, .after = 2, .complete = TRUE)
+  ) %>%
+  ungroup()
+
+p <- ggplot(asmr_for_plot_ma, aes(x = date, y = asmr_ma5,
+                                  color = group, linetype = group)) +
+  geom_line(linewidth = 0.8, na.rm = TRUE) +
+  scale_color_manual(values = c(
+    "Overall (15+)"       = "black",
+    "Vaccinated (15+)"    = "red",
+    "Unvaccinated (15+)"  = "blue"
+  )) +
+  scale_linetype_manual(values = c(
+    "Overall (15+)"       = "dashed",
+    "Vaccinated (15+)"    = "solid",
+    "Unvaccinated (15+)"  = "solid"
+  )) +
+  scale_y_continuous(labels = scales::comma, limits = c(0, NA)) +
   scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
   labs(
     title = "All-Cause Mortality in Czechia (with imputation) — Ages 15+",
-    subtitle = "Age-Standardized Mortality Rate (ESP 2013), dynamic denominators",
-    x = "Date",
-    y = "ASMR per 100,000 per week",
-    color = "Group",
+    subtitle = "Age-Standardized Mortality Rate (ESP 2013), 5-week centered moving average (+2, current, −2)",
+    x = "Date", y = "ASMR per 100,000 per week",
+    color = "Group", linetype = "Group",
     caption = "Data: Czech Ministry of Health | Rates standardized to ESP 2013; denominators update weekly based on actual population"
   ) +
   theme_minimal(base_size = 14) +
@@ -478,13 +496,14 @@ p <- ggplot(asmr_for_plot, aes(x = date, y = asmr, color = group)) +
 p
 
 # Save figures
-ggsave("CzMort_ASMR_ESP2013_15plus_dynamic_denominators.png", p,
+ggsave("CzMort_ASMR_ESP2013_15plus_MA5.png", p,
        width = 12, height = 7, dpi = 300, bg = "white")
 
-ggsave("CzMort_ASMR_ESP2013_15plus_ggplot.png", p,
+ggsave("CzMort_ASMR_ESP2013_15plus_MA5_ggplot.png", p,
        width = 12, height = 7, dpi = 300, bg = "white")
 
-cat("ggplot saved: CzMort_ASMR_ESP2013_15plus_ggplot.png\n")
+cat("ggplot saved: CzMort_ASMR_ESP2013_15plus_MA5_ggplot.png\n")
+
 
 # =============================================================================
 # Also save a compact 15+ dataset (now fully populated from long table)

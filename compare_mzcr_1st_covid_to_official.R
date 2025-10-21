@@ -232,3 +232,53 @@ ggplot(cmp_long, aes(x = week_date, y = cases, group = series)) +
     fill  = guide_legend(nrow = 1)
   )
 
+# =============================================================================
+# Export weekly series for reuse (CSV + RDS)
+# =============================================================================
+out_dir <- "out"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# Wide format: one row per week with both series and handy extras
+weekly_out_wide <- cmp %>%
+  arrange(week_date) %>%
+  mutate(
+    iso_week       = strftime(week_date, "%G-W%V"),
+    weeklyInfections = tidyr::replace_na(weeklyInfections, 0L),
+    cum_primary    = cumsum(weeklyInfections),
+    pct_of_sample  = 100 * cum_primary / n_total
+  ) %>%
+  transmute(
+    week_date      = as.Date(week_date),
+    iso_week,
+    aggregated_daily = aggregatedWeeklyCases,
+    record_level     = weeklyInfections,
+    diff             = aggregated_daily - record_level,
+    cum_primary,
+    pct_of_sample
+  )
+
+# Long (tidy) format: perfect for ggplot/Altair/etc.
+weekly_out_long <- cmp_long %>%
+  arrange(week_date, series) %>%
+  mutate(
+    iso_week = strftime(week_date, "%G-W%V")
+  ) %>%
+  select(week_date, iso_week, series, cases)
+
+# Write files
+write.csv(weekly_out_wide, file.path(out_dir, "weekly_covid_cases_wide.csv"), row.names = FALSE)
+write.csv(weekly_out_long, file.path(out_dir, "weekly_covid_cases_long.csv"), row.names = FALSE)
+
+# Also save as a single RDS bundle
+saveRDS(
+  list(
+    weekly_wide = weekly_out_wide,
+    weekly_long = weekly_out_long
+  ),
+  file.path(out_dir, "weekly_covid_cases.rds")
+)
+
+message("Saved: ",
+        file.path(out_dir, "weekly_covid_cases_wide.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_cases_long.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_cases.rds"))

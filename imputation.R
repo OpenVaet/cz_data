@@ -367,6 +367,13 @@ mz2[, age_group := as.character(cut(
   labels = age_levels,
   right  = TRUE
 ))]
+mz2[, age_group := as.character(cut(
+  as.integer(age_at_death),
+  breaks = c(-Inf, 4, 9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59, 64, 69, 74, 79, 84, 89, Inf),
+  labels = age_levels,
+  right  = TRUE
+))]
+mz2[, age_group_from := age_group]   # <-- add this line
 
 # Build a mutable "remaining" map to consume per person
 attribs_remain <- copy(attribs_agg)

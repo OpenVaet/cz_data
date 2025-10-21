@@ -247,6 +247,113 @@ df_aug_resolved <- df_aug %>%
     )
   )
 
+# -------------------------------------------------------------------
+# 
+# -------------------------------------------------------------------
+# Parse dose dates
+df_aug_resolved <- df_aug_resolved %>%
+  dplyr::mutate(
+    date_first_dose_parsed  = to_iso_monday_flex(Date_First_Dose),
+    date_second_dose_parsed = to_iso_monday_flex(Date_Second_Dose),
+    date_third_dose_parsed  = to_iso_monday_flex(Date_Third_Dose)
+  )
+
+# Rows where first dose is after the resolved death date
+dose_after_death <- df_aug_resolved %>%
+  dplyr::filter(!is.na(week_date_of_death), !is.na(date_first_dose_parsed)) %>%
+  dplyr::mutate(delta_days_first_vs_death = as.integer(date_first_dose_parsed - week_date_of_death)) %>%
+  dplyr::filter(delta_days_first_vs_death > 0L)
+
+cat("Subjects with Date_First_Dose AFTER week_date_of_death: ",
+    nrow(dose_after_death), "\n", sep = "")
+
+# Print exactly the fields requested for analysis
+dose_after_death_view <- dose_after_death %>%
+  dplyr::select(ID, Date_First_Dose, Date_Second_Dose, Date_Third_Dose, DateOfDeathInHealthcareFacility, Death, week_date_of_death,
+                delta_days_first_vs_death) %>%
+  tibble::as_tibble() %>%
+  dplyr::arrange(delta_days_first_vs_death)
+
+print(dose_after_death_view, n = Inf, width = Inf)
+
+# -------------------------------------------------------------------
+# Resolve vaccination-after-death conflicts:
+# shift week_date_of_death -> Monday of ISO week 1 in (year(latest dose) + 1)
+# -------------------------------------------------------------------
+
+# Parse remaining doses (4..7) and compute latest across all 1..7 doses
+df_aug_resolved <- df_aug_resolved %>%
+  dplyr::mutate(
+    date_fourth_dose_parsed  = to_iso_monday_flex(Date_Fourth_Dose),
+    date_fifth_dose_parsed   = to_iso_monday_flex(Date_Fifth_Dose),
+    date_sixth_dose_parsed   = to_iso_monday_flex(Date_Sixth_Dose),
+    date_seventh_dose_parsed = to_iso_monday_flex(Date_Seventh_Dose)
+  )
+
+# latest over all doses — work numerically to handle all-NA rows cleanly
+latest_dose_num <- pmax(
+  as.numeric(df_aug_resolved$date_first_dose_parsed),
+  as.numeric(df_aug_resolved$date_second_dose_parsed),
+  as.numeric(df_aug_resolved$date_third_dose_parsed),
+  as.numeric(df_aug_resolved$date_fourth_dose_parsed),
+  as.numeric(df_aug_resolved$date_fifth_dose_parsed),
+  as.numeric(df_aug_resolved$date_sixth_dose_parsed),
+  as.numeric(df_aug_resolved$date_seventh_dose_parsed),
+  na.rm = TRUE
+)
+latest_dose_num[!is.finite(latest_dose_num)] <- NA_real_
+latest_dose_parsed <- as.Date(latest_dose_num, origin = "1970-01-01")
+
+df_aug_resolved <- df_aug_resolved %>%
+  dplyr::mutate(latest_dose_parsed = latest_dose_parsed)
+
+# Detect conflicts: any dose after the current week_date_of_death
+vax_conflicts <- df_aug_resolved %>%
+  dplyr::filter(!is.na(week_date_of_death), !is.na(latest_dose_parsed),
+                latest_dose_parsed > week_date_of_death) %>%
+  dplyr::mutate(
+    delta_days_latest_vs_death = as.integer(latest_dose_parsed - week_date_of_death),
+    week_date_of_death_before  = week_date_of_death,
+    week_date_of_death_new     = ISOweek::ISOweek2date(sprintf("%04d-W01-1",
+                                   lubridate::year(latest_dose_parsed) + 1L)),
+    vax_resolution_policy      = "shifted_due_to_vax_after_death"
+  )
+
+cat("Vaccination-after-death conflicts (any dose > death): ",
+    nrow(vax_conflicts), "\n", sep = "")
+
+# Save detailed trail for these corrections
+vax_after_death_resolutions <- vax_conflicts %>%
+  dplyr::select(
+    ID,
+    Date_First_Dose, Date_Second_Dose, Date_Third_Dose,
+    Date_Fourth_Dose, Date_Fifth_Dose, Date_Sixth_Dose, Date_Seventh_Dose,
+    latest_dose_parsed,
+    Death, DateOfDeathInHealthcareFacility,
+    week_date_of_death_before, week_date_of_death_new,
+    delta_days_latest_vs_death, vax_resolution_policy
+  )
+write.csv(vax_after_death_resolutions,
+          "data/mzcr_vax_after_death_resolutions.csv",
+          row.names = FALSE, na = "")
+cat("Wrote: data/mzcr_vax_after_death_resolutions.csv\n")
+
+# Apply change into the main frame + recompute age_at_death
+df_aug_resolved <- df_aug_resolved %>%
+  dplyr::left_join(vax_conflicts %>% dplyr::select(ID, week_date_of_death_new),
+                   by = "ID") %>%
+  dplyr::mutate(
+    week_date_of_death = dplyr::coalesce(week_date_of_death_new, week_date_of_death),
+    death_resolution_policy_final = dplyr::if_else(!is.na(week_date_of_death_new),
+                                                   "shifted_due_to_vax_after_death",
+                                                   death_resolution_policy),
+    age_at_death = dplyr::if_else(
+      !is.na(year_of_birth_end) & !is.na(week_date_of_death),
+      lubridate::year(week_date_of_death) - year_of_birth_end,
+      NA_integer_
+    )
+  ) %>%
+  dplyr::select(-week_date_of_death_new)
 
 # Summary of resolution policies
 policy_summary <- df_aug_resolved %>%

@@ -205,3 +205,81 @@ ggplot(weekly, aes(x = week)) +
     axis.text.x = element_text(angle = 0, vjust = 0.5),
     panel.grid.minor = element_blank()
   )
+
+# =============================================================================
+# Export + print weekly data (tests, cases, MA(4), positivity)
+# =============================================================================
+out_dir <- "out"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+weekly_out <- weekly %>%
+  mutate(
+    iso_week        = strftime(week, "%G-W%V"),
+    positivity_pct  = 100 * positivity
+  ) %>%
+  transmute(
+    week_date = as.Date(week),
+    iso_week,
+    weekly_tests = as.integer(round(weekly_tests)),
+    weekly_cases = as.integer(round(weekly_cases)),
+    cases_ma4    = round(cases_ma4, 0),
+    positivity_pct = round(positivity_pct, 1)  # %
+  ) %>%
+  arrange(week_date)
+
+# Write CSV + RDS + tidy (long) variant
+write.csv(weekly_out, file.path(out_dir, "weekly_tests_cases_positivity.csv"), row.names = FALSE)
+saveRDS(weekly_out, file.path(out_dir, "weekly_tests_cases_positivity.rds"))
+
+weekly_long <- weekly_out %>%
+  pivot_longer(cols = c(weekly_tests, weekly_cases, cases_ma4, positivity_pct),
+               names_to = "metric", values_to = "value")
+
+write.csv(weekly_long, file.path(out_dir, "weekly_tests_cases_positivity_long.csv"), row.names = FALSE)
+
+# Console summary + preview
+cat("\n=== Weekly tests, cases, MA(4) & positivity ===\n")
+cat("Weeks:", nrow(weekly_out),
+    " | Range:", format(min(weekly_out$week_date), "%Y-%m-%d"),
+    "→", format(max(weekly_out$week_date), "%Y-%m-%d"), "\n\n")
+
+# Show first & last 8 rows (readable, with thousands separators)
+fmt <- function(x) format(x, big.mark = " ", scientific = FALSE, trim = TRUE)
+
+head_tbl <- weekly_out %>%
+  head(8) %>%
+  mutate(
+    weekly_tests = fmt(weekly_tests),
+    weekly_cases = fmt(weekly_cases),
+    cases_ma4    = fmt(cases_ma4),
+    `positivity %` = fmt(positivity_pct)
+  ) %>%
+  select(week_date, iso_week, weekly_tests, weekly_cases, cases_ma4, `positivity %`)
+
+tail_tbl <- weekly_out %>%
+  tail(8) %>%
+  mutate(
+    weekly_tests = fmt(weekly_tests),
+    weekly_cases = fmt(weekly_cases),
+    cases_ma4    = fmt(cases_ma4),
+    `positivity %` = fmt(positivity_pct)
+  ) %>%
+  select(week_date, iso_week, weekly_tests, weekly_cases, cases_ma4, `positivity %`)
+
+cat("-- First 8 weeks --\n")
+knitr::kable(head_tbl, align = "lccccc") %>% print()
+
+cat("\n-- Last 8 weeks --\n")
+knitr::kable(tail_tbl, align = "lccccc") %>% print()
+
+# Note on missing MA(4) or positivity
+na_ma4 <- sum(is.na(weekly$cases_ma4))
+na_pos <- sum(is.na(weekly$positivity))
+if (na_ma4 > 0 || na_pos > 0) {
+  cat("\n(NOTE) MA(4) may be NA at edges; positivity is NA when weekly_tests == 0.\n")
+}
+
+message("Saved: ",
+        file.path(out_dir, "weekly_tests_cases_positivity.csv"), " ; ",
+        file.path(out_dir, "weekly_tests_cases_positivity_long.csv"), " ; ",
+        file.path(out_dir, "weekly_tests_cases_positivity.rds"))

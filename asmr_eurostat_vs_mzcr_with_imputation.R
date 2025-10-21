@@ -1,6 +1,7 @@
 # ===================================================================
 # ASMR (15+) — Eurostat weekly deaths vs. OUR Eurostat-method output
-# (now feeds from the long table, or from a cached series if available)
+# (feeds from mzcr_no_or_first_infection_with_imputation.csv)
+# Files produced are suffixed with "_imputed"
 # ===================================================================
 
 library(dplyr)
@@ -15,7 +16,7 @@ library(scales)
 dir.create("data", showWarnings = FALSE, recursive = TRUE)
 
 # -------------------------------------------------------------------
-# Eurostat weekly deaths (demo_r_mwk_05)
+# Eurostat weekly deaths (demo_r_mwk_05)  — reference
 # -------------------------------------------------------------------
 eu_file <- "data/demo_r_mwk_05_linear_2_0.csv"
 eu_url  <- "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/demo_r_mwk_05/1.0?compress=false&format=csvdata&formatVersion=2.0&lang=en&labels=both"
@@ -117,7 +118,7 @@ esp2013 <- tibble::tibble(
                 7000, 7000, 6500, 6000, 5500, 5000, 4000, 2500, 1500, 800, 200)
 ) %>% filter(age_end >= 15)
 
-esp15_total   <- sum(esp2013$esp_pop)
+esp15_total    <- sum(esp2013$esp_pop)
 weeks_per_year <- 52.1775
 
 # -------------------------------------------------------------------
@@ -144,87 +145,107 @@ asmr15_eu <- eu_rates_15p %>%
   arrange(iso_date)
 
 # -------------------------------------------------------------------
-# Our Eurostat-method ASMR (15+) from the long table or cached series
+# Our Eurostat-method ASMR (15+) — computed from the IMPUTED master
+#   data/mzcr_no_or_first_infection_with_imputation.csv
+#   cached to: data/asmr_esp2013_15plus_weekly_from_imputed_eurostat_pop.csv
 # -------------------------------------------------------------------
-cached_series <- "data/asmr_esp2013_15plus_weekly_from_longtable_eurostat_pop.csv"
-long_table    <- "data/asmr_esp2013_age_stratified_with_imputation.csv"
+imputed_file   <- "data/mzcr_no_or_first_infection_with_imputation.csv"
+cached_imputed <- "data/asmr_esp2013_15plus_weekly_from_imputed_eurostat_pop.csv"
 
-get_our_series <- function() {
-  if (file.exists(cached_series)) {
-    cat("Using cached our-series:", cached_series, "\n")
-    return(read_csv(cached_series, show_col_types = FALSE) %>%
+get_our_series_imputed <- function() {
+  if (file.exists(cached_imputed)) {
+    cat("Using cached our-series (imputed):", cached_imputed, "\n")
+    return(read_csv(cached_imputed, show_col_types = FALSE) %>%
              mutate(iso_date = as.Date(iso_date)) %>%
-             transmute(iso_date, asmr_15plus_record = asmr_15plus_record_eupop))
+             transmute(iso_date, asmr_15plus_record_imputed = asmr_15plus_record_imputed))
   }
-  if (!file.exists(long_table)) {
-    stop("Missing long table: ", long_table, "\nGenerate it with the main script first.")
+  if (!file.exists(imputed_file)) {
+    stop("Missing imputed master: ", imputed_file,
+         "\nPlease run step 5 to build it first.")
   }
-  cat("Cached our-series not found; rebuilding from long table...\n")
-  cube <- read_csv(long_table, show_col_types = FALSE) %>%
+  cat("Cached our-series (imputed) not found; rebuilding from master...\n")
+
+  # Read only what we need (much lighter): death date + age
+  # death rows only = non-empty week_date_of_death
+  dat <- read_csv(
+    imputed_file,
+    col_types = cols(
+      week_date_of_death = col_character(),
+      age = col_integer()
+    ),
+    col_select = c(week_date_of_death, age)
+  ) %>%
+    filter(!is.na(week_date_of_death), week_date_of_death != "")
+
+  dat <- dat %>%
     mutate(
-      date = as.Date(date),
-      week = as.integer(week),
-      age_start = as.integer(age_start),
-      age_end   = as.integer(age_end)
-    )
-  
-  # Aggregate deaths over vaccination/positivity (sex total analogue), 15+
-  our_deaths_15p <- cube %>%
-    filter(age_start >= 15) %>%
-    group_by(week, date, age_start, age_end) %>%
-    summarise(deaths = sum(n_deaths, na.rm = TRUE), .groups = "drop") %>%
-    mutate(iso_year = floor(week / 100L))
-  
-  our_rates_15p <- our_deaths_15p %>%
-    left_join(esp2013, by = c("age_start", "age_end")) %>%
+      death_date = as.Date(week_date_of_death),
+      iso_year   = isoyear(death_date),
+      iso_week   = isoweek(death_date),
+      iso_date   = ISOweek::ISOweek2date(sprintf("%04d-W%02d-1", iso_year, iso_week)),
+      age        = pmax(0L, as.integer(age)),
+      age_start  = pmin(floor(age / 5) * 5, 95L),
+      age_end    = if_else(age_start < 95L, age_start + 4L, 999L)
+    ) %>%
+    filter(age_end >= 15)
+
+  our_weekly_15p <- dat %>%
+    count(iso_year, iso_week, iso_date, age_start, age_end, name = "deaths")
+
+  # Attach population and ESP weights, compute weekly age-specific rates
+  our_rates <- our_weekly_15p %>%
     left_join(pop_bands, by = c("iso_year" = "year", "age_start", "age_end")) %>%
     group_by(age_start, age_end) %>%
     tidyr::fill(pop, .direction = "downup") %>%
     ungroup() %>%
+    left_join(esp2013, by = c("age_start", "age_end")) %>%
     mutate(
       person_weeks  = pop / weeks_per_year,
       rate_per_100k = if_else(person_weeks > 0, deaths / person_weeks * 1e5, NA_real_)
     ) %>%
     filter(!is.na(rate_per_100k))
-  
-  our <- our_rates_15p %>%
-    group_by(week, date) %>%
+
+  our_asmr <- our_rates %>%
+    group_by(iso_year, iso_week, iso_date) %>%
     summarise(
-      asmr_15plus_record = sum(rate_per_100k * esp_pop) / esp15_total,
+      asmr_15plus_record_imputed = sum(rate_per_100k * esp_pop) / esp15_total,
       .groups = "drop"
     ) %>%
-    arrange(date) %>%
-    mutate(iso_date = as.Date(date)) %>%
-    select(iso_date, asmr_15plus_record)
-  
-  our
+    arrange(iso_date) %>%
+    select(iso_date, asmr_15plus_record_imputed)
+
+  # cache
+  write_csv(our_asmr, cached_imputed)
+  our_asmr
 }
 
-asmr15_record <- get_our_series()
+asmr15_record <- get_our_series_imputed()
 
 # -------------------------------------------------------------------
-# Join & compare
+# Join & compare (save comparison with _imputed suffix as well)
 # -------------------------------------------------------------------
-cmp <- asmr15_eu %>%
+cmp_imputed <- asmr15_eu %>%
   inner_join(asmr15_record, by = "iso_date") %>%
   arrange(iso_date)
 
-cat("Joined weeks:", nrow(cmp), " | ",
-    format(min(cmp$iso_date), "%Y-%m-%d"), " to ", format(max(cmp$iso_date), "%Y-%m-%d"), "\n")
+write_csv(cmp_imputed, "data/asmr_15plus_comparison_imputed.csv")
 
-if (nrow(cmp) > 2) {
-  cat(sprintf("Correlation: %.4f\n",
-              suppressWarnings(cor(cmp$asmr_15plus_record,
-                                   cmp$asmr_15plus_eurostat, use = "complete.obs"))))
+cat("Joined weeks:", nrow(cmp_imputed), " | ",
+    format(min(cmp_imputed$iso_date), "%Y-%m-%d"), " to ", format(max(cmp_imputed$iso_date), "%Y-%m-%d"), "\n")
+
+if (nrow(cmp_imputed) > 2) {
+  cat(sprintf("Correlation (imputed): %.4f\n",
+              suppressWarnings(cor(cmp_imputed$asmr_15plus_record_imputed,
+                                   cmp_imputed$asmr_15plus_eurostat, use = "complete.obs"))))
 }
 
 # -------------------------------------------------------------------
 # Limit to 2020-W10 through last ISO week of 2023
 # -------------------------------------------------------------------
 start_date <- ISOweek::ISOweek2date("2020-W10-1")
-end_date   <- max(cmp$iso_date[lubridate::year(cmp$iso_date) == 2023], na.rm = TRUE)
+end_date   <- max(cmp_imputed$iso_date[lubridate::year(cmp_imputed$iso_date) == 2023], na.rm = TRUE)
 
-cmp_win <- cmp %>%
+cmp_win <- cmp_imputed %>%
   dplyr::filter(iso_date >= start_date, iso_date <= end_date)
 
 cat("Windowed weeks:", nrow(cmp_win), " | ",
@@ -233,7 +254,7 @@ cat("Windowed weeks:", nrow(cmp_win), " | ",
 # -------------------------------------------------------------------
 # Recompute correlation + legend-ready long data for the window
 # -------------------------------------------------------------------
-r_val <- suppressWarnings(cor(cmp_win$asmr_15plus_record,
+r_val <- suppressWarnings(cor(cmp_win$asmr_15plus_record_imputed,
                               cmp_win$asmr_15plus_eurostat,
                               use = "complete.obs"))
 r_txt <- if (is.finite(r_val)) sprintf(" — correlation r = %.3f (n = %d weeks)", r_val, nrow(cmp_win)) else ""
@@ -241,22 +262,22 @@ r_txt <- if (is.finite(r_val)) sprintf(" — correlation r = %.3f (n = %d weeks)
 cmp_long <- cmp_win %>%
   dplyr::transmute(
     iso_date,
-    `Our (Eurostat-method)` = asmr_15plus_record,
+    `Our (Eurostat-method, imputed)` = asmr_15plus_record_imputed,
     `Eurostat (weekly deaths + annual pop)` = asmr_15plus_eurostat
   ) %>%
   tidyr::pivot_longer(-iso_date, names_to = "series", values_to = "asmr") %>%
   dplyr::mutate(series = factor(
     series,
-    levels = c("Our (Eurostat-method)", "Eurostat (weekly deaths + annual pop)")
+    levels = c("Our (Eurostat-method, imputed)", "Eurostat (weekly deaths + annual pop)")
   ))
 
 # Color/linetype mappings
 col_vals <- c(
-  "Our (Eurostat-method)" = "#D55E00",          # Okabe–Ito vermillion
-  "Eurostat (weekly deaths + annual pop)" = "#0072B2"  # Okabe–Ito blue
+  "Our (Eurostat-method, imputed)" = "#D55E00",
+  "Eurostat (weekly deaths + annual pop)" = "#0072B2"
 )
 lty_vals <- c(
-  "Our (Eurostat-method)" = "solid",
+  "Our (Eurostat-method, imputed)" = "solid",
   "Eurostat (weekly deaths + annual pop)" = "longdash"
 )
 
@@ -278,12 +299,12 @@ ggplot(cmp_long, aes(x = iso_date, y = asmr,
   labs(
     title = "ASMR (ESP 2013) — Ages 15+ — Czechia",
     subtitle = paste0(
-      "Our Eurostat-method vs. Eurostat weekly deaths + annual population",
+      "Our Eurostat-method (imputed) vs. Eurostat weekly deaths + annual population",
       " — window: 2020-W10 to last week of 2023", r_txt
     ),
     x = "Week (Monday)",
     y = "ASMR per 100,000 per week",
-    caption = "Eurostat: demo_r_mwk_05 (deaths), demo_pjan (annual population; person-weeks = pop / 52.1775). 95+ open age bin."
+    caption = "Our series computed from mzcr_no_or_first_infection_with_imputation.csv. Eurostat: demo_r_mwk_05 (deaths), demo_pjan (annual population; person-weeks = pop / 52.1775). 95+ open age bin."
   ) +
   theme_minimal(base_size = 13) +
   theme(
@@ -300,3 +321,111 @@ ggplot(cmp_long, aes(x = iso_date, y = asmr,
     axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
     plot.caption = element_text(hjust = 0)
   )
+
+# =============================================================================
+# Export + print weekly ASMR (15+) — full overlap + 2020-W10..2023 window
+# =============================================================================
+out_dir <- "out"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# ---- Full overlap (all joined weeks in cmp_imputed) -------------------------
+asmr_full_wide <- cmp_imputed %>%
+  arrange(iso_date) %>%
+  transmute(
+    iso_week        = strftime(iso_date, "%G-W%V"),
+    iso_date,
+    asmr_eurostat   = asmr_15plus_eurostat,
+    asmr_our_imputed= asmr_15plus_record_imputed,
+    diff            = asmr_our_imputed - asmr_eurostat,
+    ratio           = if_else(asmr_15plus_eurostat > 0,
+                              asmr_our_imputed / asmr_15plus_eurostat,
+                              NA_real_)
+  )
+
+asmr_full_long <- asmr_full_wide %>%
+  select(iso_date, iso_week, asmr_eurostat, asmr_our_imputed) %>%
+  tidyr::pivot_longer(
+    cols = c(asmr_eurostat, asmr_our_imputed),
+    names_to = "series",
+    values_to = "asmr_per_100k_week"
+  ) %>%
+  mutate(series = dplyr::recode(
+    series,
+    asmr_eurostat    = "Eurostat (weekly deaths + annual pop)",
+    asmr_our_imputed = "Our (Eurostat-method, imputed)"
+  ))
+
+# ---- Window (2020-W10 .. last ISO week of 2023) -----------------------------
+asmr_win_wide <- cmp_win %>%
+  arrange(iso_date) %>%
+  transmute(
+    iso_week        = strftime(iso_date, "%G-W%V"),
+    iso_date,
+    asmr_eurostat   = asmr_15plus_eurostat,
+    asmr_our_imputed= asmr_15plus_record_imputed,
+    diff            = asmr_our_imputed - asmr_eurostat,
+    ratio           = if_else(asmr_15plus_eurostat > 0,
+                              asmr_our_imputed / asmr_15plus_eurostat,
+                              NA_real_)
+  )
+
+asmr_win_long <- asmr_win_wide %>%
+  select(iso_date, iso_week, asmr_eurostat, asmr_our_imputed) %>%
+  tidyr::pivot_longer(
+    cols = c(asmr_eurostat, asmr_our_imputed),
+    names_to = "series",
+    values_to = "asmr_per_100k_week"
+  ) %>%
+  mutate(series = dplyr::recode(
+    series,
+    asmr_eurostat    = "Eurostat (weekly deaths + annual pop)",
+    asmr_our_imputed = "Our (Eurostat-method, imputed)"
+  ))
+
+# ---- Write files ------------------------------------------------------------
+write.csv(asmr_full_wide, file.path(out_dir, "asmr_weekly_15plus_wide_imputed.csv"), row.names = FALSE)
+write.csv(asmr_full_long, file.path(out_dir, "asmr_weekly_15plus_long_imputed.csv"), row.names = FALSE)
+write.csv(asmr_win_wide,  file.path(out_dir, "asmr_weekly_15plus_wide_window_imputed.csv"), row.names = FALSE)
+write.csv(asmr_win_long,  file.path(out_dir, "asmr_weekly_15plus_long_window_imputed.csv"), row.names = FALSE)
+
+# RDS bundle
+saveRDS(
+  list(
+    full_wide   = asmr_full_wide,
+    full_long   = asmr_full_long,
+    window_wide = asmr_win_wide,
+    window_long = asmr_win_long
+  ),
+  file.path(out_dir, "asmr_weekly_15plus_imputed.rds")
+)
+
+# ---- Console preview --------------------------------------------------------
+message("Weekly ASMR (15+) — preview of last 12 weeks (full overlap):")
+print(
+  asmr_full_wide %>%
+    dplyr::transmute(
+      iso_date, iso_week,
+      eurostat   = round(asmr_eurostat, 2),
+      our_imputed= round(asmr_our_imputed, 2),
+      diff       = round(diff, 2),
+      ratio      = round(ratio, 3)
+    ) %>%
+    dplyr::slice_tail(n = 12)
+)
+
+if (nrow(asmr_win_wide) > 0) {
+  message("Window ",
+          format(min(asmr_win_wide$iso_date), "%Y-%m-%d"), " to ",
+          format(max(asmr_win_wide$iso_date), "%Y-%m-%d"),
+          " — correlation r = ",
+          sprintf("%.3f", suppressWarnings(cor(asmr_win_wide$asmr_our_imputed,
+                                               asmr_win_wide$asmr_eurostat,
+                                               use = "complete.obs"))))
+}
+
+message("Saved: ",
+        file.path(out_dir, "asmr_weekly_15plus_wide_imputed.csv"), " ; ",
+        file.path(out_dir, "asmr_weekly_15plus_long_imputed.csv"), " ; ",
+        file.path(out_dir, "asmr_weekly_15plus_wide_window_imputed.csv"), " ; ",
+        file.path(out_dir, "asmr_weekly_15plus_long_window_imputed.csv"), " ; ",
+        file.path(out_dir, "asmr_weekly_15plus_imputed.rds"))

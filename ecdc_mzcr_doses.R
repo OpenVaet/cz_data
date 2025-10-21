@@ -150,3 +150,99 @@ print(p_compare)
 dir.create("visual/compare_sources", recursive = TRUE, showWarnings = FALSE)
 ggsave("visual/compare_sources/weekly_doses_ecdc_vs_mzcr.png",
        p_compare, width = 12, height = 6, dpi = 300, bg = "white")
+
+# =============================================================================
+# Export weekly doses series for reuse (CSV + RDS)
+# =============================================================================
+out_dir <- "out"
+if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# ---- Full timeline (union of weeks across sources) -------------------------
+all_weeks_full <- tibble(
+  week_date = seq.Date(
+    min(compare_df$week_date, na.rm = TRUE),
+    max(compare_df$week_date, na.rm = TRUE),
+    by = "week"
+  )
+)
+
+weekly_doses_wide <- all_weeks_full %>%
+  left_join(
+    compare_df %>%
+      select(week_date, source, total_doses) %>%
+      tidyr::pivot_wider(names_from = source, values_from = total_doses),
+    by = "week_date"
+  ) %>%
+  replace_na(list(ECDC = 0, MZCR = 0)) %>%
+  arrange(week_date) %>%
+  mutate(
+    iso_week = strftime(week_date, "%G-W%V"),
+    diff     = ECDC - MZCR,
+    cum_ecdc = cumsum(ECDC),
+    cum_mzcr = cumsum(MZCR)
+  ) %>%
+  select(
+    week_date, iso_week,
+    total_doses_ecdc = ECDC,
+    total_doses_mzcr = MZCR,
+    diff, cum_ecdc, cum_mzcr
+  )
+
+weekly_doses_long <- compare_df %>%
+  arrange(week_date, source) %>%
+  mutate(iso_week = strftime(week_date, "%G-W%V")) %>%
+  select(week_date, iso_week, source, total_doses)
+
+# ---- Overlapping period only ----------------------------------------------
+all_weeks_common <- tibble(week_date = seq.Date(min_common, max_common, by = "week"))
+
+weekly_doses_common_wide <- all_weeks_common %>%
+  left_join(
+    compare_df_common %>%
+      select(week_date, source, total_doses) %>%
+      tidyr::pivot_wider(names_from = source, values_from = total_doses),
+    by = "week_date"
+  ) %>%
+  replace_na(list(ECDC = 0, MZCR = 0)) %>%
+  arrange(week_date) %>%
+  mutate(
+    iso_week = strftime(week_date, "%G-W%V"),
+    diff     = ECDC - MZCR,
+    cum_ecdc = cumsum(ECDC),
+    cum_mzcr = cumsum(MZCR)
+  ) %>%
+  select(
+    week_date, iso_week,
+    total_doses_ecdc = ECDC,
+    total_doses_mzcr = MZCR,
+    diff, cum_ecdc, cum_mzcr
+  )
+
+weekly_doses_common_long <- compare_df_common %>%
+  arrange(week_date, source) %>%
+  mutate(iso_week = strftime(week_date, "%G-W%V")) %>%
+  select(week_date, iso_week, source, total_doses)
+
+# ---- Write files -----------------------------------------------------------
+write.csv(weekly_doses_wide,        file.path(out_dir, "weekly_covid_doses_wide.csv"),        row.names = FALSE)
+write.csv(weekly_doses_long,        file.path(out_dir, "weekly_covid_doses_long.csv"),        row.names = FALSE)
+write.csv(weekly_doses_common_wide, file.path(out_dir, "weekly_covid_doses_common_wide.csv"), row.names = FALSE)
+write.csv(weekly_doses_common_long, file.path(out_dir, "weekly_covid_doses_common_long.csv"), row.names = FALSE)
+
+# RDS bundle (everything in one object)
+saveRDS(
+  list(
+    weekly_wide         = weekly_doses_wide,
+    weekly_long         = weekly_doses_long,
+    weekly_common_wide  = weekly_doses_common_wide,
+    weekly_common_long  = weekly_doses_common_long
+  ),
+  file.path(out_dir, "weekly_covid_doses.rds")
+)
+
+message("Saved: ",
+        file.path(out_dir, "weekly_covid_doses_wide.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_doses_long.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_doses_common_wide.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_doses_common_long.csv"), " ; ",
+        file.path(out_dir, "weekly_covid_doses.rds"))
