@@ -258,8 +258,6 @@ sub load_mzcr {
         my $year_of_birth_end     = $row->{'year_of_birth_end'} // die;
         my $sex                   = $row->{'sex'}               // die;
         my $age_at_death          = $row->{'age_at_death'};
-        my $death_year            = $row->{'death_year'};
-        my $death_week            = $row->{'death_week'};
         my $alive_on_jan_1st_2024 = 1; # By default, the individual is alive on January 1st, 2024.
         my $comp_death;                # If he died before or on January 1st, keeps track of "when"
         if ($week_date_of_death) {
