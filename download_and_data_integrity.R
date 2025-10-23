@@ -414,3 +414,307 @@ report_missing(df_base,          "df_base (<= first infection)")
 # -------------------------------------------------------------------
 write.csv(df_aug_resolved, "data/mzcr_no_or_first_infection.csv", row.names = FALSE, na = "")
 cat("Wrote:\n - data/mzcr_multiple_infections.csv (discarded rows)\n - data/mzcr_no_or_first_infection.csv (kept + augmented rows)\n")
+
+# ================================================================
+# 0) Extra parsed dates & quick flags
+# ================================================================
+df_aug_resolved <- df_aug_resolved %>%
+  mutate(
+    date_result_parsed   = to_iso_monday_flex(DateOfResult),
+    date_recovered_parsed= to_iso_monday_flex(Recovered),
+    
+    has_pos = !is.na(week_date_of_positivity),
+    has_any_vax = coalesce(has_first_dose, FALSE) |
+      !is.na(date_second_dose_parsed) |
+      !is.na(date_third_dose_parsed)  |
+      !is.na(date_fourth_dose_parsed) |
+      !is.na(date_fifth_dose_parsed)  |
+      !is.na(date_sixth_dose_parsed)  |
+      !is.na(date_seventh_dose_parsed),
+    
+    has_any_hosp = (binary_Hospitalization == 1L) |
+      (binary_ICU == 1L) |
+      (binary_StandardWard == 1L) |
+      (binary_Oxygen == 1L) |
+      (binary_HFNO == 1L) |
+      (binary_MechanicalVentilation_ECMO == 1L),
+    
+    has_any_death = !is.na(death_from_death_field) | !is.na(death_from_facility_field),
+    has_dcci = !is.na(DCCI) & nzchar(trimws(DCCI)),
+    yob_missing = is.na(year_of_birth_end)
+  )
+
+# ================================================================
+# 1) Provenance classification (ISIN / NRHZS-only / LPZ-only / etc.)
+#    -> Quantifies the "no infection & no vaccination" population
+# ================================================================
+df_aug_resolved <- df_aug_resolved %>%
+  mutate(
+    provenance = dplyr::case_when(
+      has_pos & has_any_vax                       ~ "ISIN+VAX",
+      has_pos & !has_any_vax                      ~ "ISIN_only",
+      !has_pos & has_any_vax                      ~ "Vaccination_only",
+      !has_pos & !has_any_vax & has_dcci          ~ "NRHZS_only",
+      !has_pos & !has_any_vax & !has_dcci & has_any_death ~ "LPZ_only",
+      TRUE                                        ~ "Unknown_origin"
+    )
+  )
+
+prov_breakdown <- df_aug_resolved %>%
+  count(provenance, name = "n") %>% arrange(desc(n))
+print(prov_breakdown)
+
+prov_yob_missing <- df_aug_resolved %>%
+  group_by(provenance, yob_missing) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = yob_missing, values_from = n, values_fill = 0) %>%
+  rename(yob_missing_FALSE = `FALSE`, yob_missing_TRUE = `TRUE`)
+print(prov_yob_missing)
+
+write.csv(prov_breakdown,     "data/mzcr_provenance_counts.csv", row.names = FALSE)
+write.csv(prov_yob_missing,   "data/mzcr_provenance_yob_missing.csv", row.names = FALSE)
+
+# ================================================================
+# 2) Explicit "no infection & no vaccination" cohort anatomy
+# ================================================================
+no_inf_no_vax <- df_aug_resolved %>%
+  filter((is.na(Infection) | Infection == 0L),
+         !has_pos, !has_any_vax)
+
+no_inf_no_vax_summary <- no_inf_no_vax %>%
+  summarise(
+    rows = n(),
+    with_dcci = sum(has_dcci),
+    with_long_covid = sum(!is.na(Long_COVID) & nzchar(trimws(Long_COVID))),
+    with_any_hosp = sum(has_any_hosp),
+    with_any_death = sum(has_any_death),
+    yob_missing = sum(yob_missing)
+  )
+print(no_inf_no_vax_summary)
+
+write.csv(no_inf_no_vax %>% select(ID, DCCI, Long_COVID, has_any_hosp, has_any_death, YearOfBirth),
+          "data/mzcr_no_inf_no_vax_details.csv", row.names = FALSE)
+
+# ================================================================
+# 3) Contradictions & coherence checks
+# ================================================================
+
+# 3a) Infection==0 but positivity/vax/hospitalization present
+contradictions_inf0 <- df_aug_resolved %>%
+  filter(!is.na(Infection) & Infection == 0L & (has_pos | has_any_vax | has_any_hosp))
+cat("Contradictions (Infection==0 with pos/vax/hosp): ", nrow(contradictions_inf0), "\n")
+write.csv(contradictions_inf0, "data/mzcr_contradictions_inf0.csv", row.names = FALSE)
+
+# 3b) Positivity vs Result date order
+pos_vs_result <- df_aug_resolved %>%
+  filter(!is.na(week_date_of_positivity), !is.na(date_result_parsed)) %>%
+  mutate(delta_days = as.integer(date_result_parsed - week_date_of_positivity))
+summary_pos_vs_result <- pos_vs_result %>%
+  summarise(n = n(),
+            neg = sum(delta_days < 0),
+            gt_14 = sum(delta_days > 14),
+            min = min(delta_days, na.rm = TRUE),
+            q50 = median(delta_days, na.rm = TRUE),
+            max = max(delta_days, na.rm = TRUE))
+print(summary_pos_vs_result)
+write.csv(pos_vs_result %>% filter(delta_days < 0 | delta_days > 14),
+          "data/mzcr_pos_vs_result_outliers.csv", row.names = FALSE)
+
+# 3c) Hospitalization flags vs dates/durations
+hosp_incoh <- df_aug_resolved %>%
+  filter(
+    (binary_Hospitalization == 1L & is.na(min_Hospitalization)) |
+      (binary_ICU == 1L           & is.na(min_ICU)) |
+      (binary_StandardWard == 1L  & is.na(min_StandardWard)) |
+      (binary_Oxygen == 1L        & is.na(min_Oxygen)) |
+      (binary_HFNO == 1L          & is.na(min_HFNO)) |
+      (binary_MechanicalVentilation_ECMO == 1L & is.na(min_MechanicalVentilation_ECMO)) |
+      (days_Hospitalization < 0 | days_ICU < 0 | days_StandardWard < 0 |
+         days_Oxygen < 0 | days_HFNO < 0 | days_MechanicalVentilation_ECMO < 0)
+  )
+cat("Hospitalization inconsistencies: ", nrow(hosp_incoh), "\n")
+write.csv(hosp_incoh, "data/mzcr_hospitalization_inconsistencies.csv", row.names = FALSE)
+
+# 3d) ICU implies hospitalization (sanity)
+icu_wo_hosp <- df_aug_resolved %>%
+  filter(binary_ICU == 1L & (is.na(binary_Hospitalization) | binary_Hospitalization == 0L))
+cat("ICU without hospitalization flag: ", nrow(icu_wo_hosp), "\n")
+write.csv(icu_wo_hosp, "data/mzcr_icu_without_hosp.csv", row.names = FALSE)
+
+# 3e) Recovered before positivity or after death (if both present)
+recovery_incoh <- df_aug_resolved %>%
+  filter(!is.na(date_recovered_parsed)) %>%
+  filter( (!is.na(week_date_of_positivity) & date_recovered_parsed < week_date_of_positivity) |
+            (!is.na(week_date_of_death)      & date_recovered_parsed > week_date_of_death) )
+cat("Recovery date inconsistencies: ", nrow(recovery_incoh), "\n")
+write.csv(recovery_incoh, "data/mzcr_recovery_inconsistencies.csv", row.names = FALSE)
+
+# ================================================================
+# 4) Vaccination chronology anomalies
+#    - Later dose present but earlier dose missing
+#    - Non-monotonic dose dates
+# ================================================================
+dose_cols <- c("date_first_dose_parsed","date_second_dose_parsed","date_third_dose_parsed",
+               "date_fourth_dose_parsed","date_fifth_dose_parsed","date_sixth_dose_parsed",
+               "date_seventh_dose_parsed")
+
+later_no_earlier <- df_aug_resolved %>%
+  mutate(
+    d1 = !is.na(date_first_dose_parsed),
+    d2 = !is.na(date_second_dose_parsed),
+    d3 = !is.na(date_third_dose_parsed),
+    d4 = !is.na(date_fourth_dose_parsed),
+    d5 = !is.na(date_fifth_dose_parsed),
+    d6 = !is.na(date_sixth_dose_parsed),
+    d7 = !is.na(date_seventh_dose_parsed),
+    gap12 = d2 & !d1,
+    gap23 = d3 & !d2,
+    gap34 = d4 & !d3,
+    gap45 = d5 & !d4,
+    gap56 = d6 & !d5,
+    gap67 = d7 & !d6
+  ) %>%
+  filter(gap12 | gap23 | gap34 | gap45 | gap56 | gap67)
+cat("Later dose present while prior missing: ", nrow(later_no_earlier), "\n")
+write.csv(later_no_earlier %>% select(ID, starts_with("Date_")),
+          "data/mzcr_vax_gaps.csv", row.names = FALSE)
+
+# --- Define parsed dose columns (must exist in df_aug_resolved) ---
+dose_parsed_cols <- c(
+  "date_first_dose_parsed","date_second_dose_parsed","date_third_dose_parsed",
+  "date_fourth_dose_parsed","date_fifth_dose_parsed","date_sixth_dose_parsed",
+  "date_seventh_dose_parsed"
+)
+
+# If you haven't already created has_any_vax, do it now (fast + vectorized)
+if (!"has_any_vax" %in% names(df_aug_resolved)) {
+  df_aug_resolved <- df_aug_resolved %>%
+    dplyr::mutate(
+      has_any_vax = Reduce(`|`, lapply(dose_parsed_cols, function(x) !is.na(.data[[x]])))
+    )
+}
+
+# Work only on rows that have any vaccination at all to cut size early
+idx_vax <- which(df_aug_resolved$has_any_vax %in% TRUE)
+if (length(idx_vax)) {
+  # Build numeric matrix of dose dates (Date -> numeric days since epoch)
+  D <- do.call(
+    cbind,
+    lapply(dose_parsed_cols, function(x) as.numeric(df_aug_resolved[[x]][idx_vax]))
+  )
+  # D is (n_vax x 7); NA stays NA
+  
+  # Compute pairwise “inversions”: later dose j earlier than dose i (j > i)
+  combs <- utils::combn(ncol(D), 2)  # all i<j pairs
+  any_bad <- rep(FALSE, nrow(D))
+  bad_cnt <- integer(nrow(D))        # optional: number of inversions per row
+  
+  for (k in seq_len(ncol(combs))) {
+    i <- combs[1, k]; j <- combs[2, k]
+    # Compare only where both dates exist
+    bad <- is.finite(D[, i]) & is.finite(D[, j]) & (D[, j] < D[, i])
+    any_bad <- any_bad | bad
+    bad_cnt <- bad_cnt + bad
+  }
+  
+  non_mono_mask_global <- rep(FALSE, nrow(df_aug_resolved))
+  non_mono_mask_global[idx_vax] <- any_bad
+  
+  non_monotonic_vax <- df_aug_resolved[non_mono_mask_global, , drop = FALSE]
+  non_monotonic_vax$monotonic_inversion_count <- bad_cnt[any_bad]
+  
+  cat("Non-monotonic vaccination date order: ",
+      sum(non_mono_mask_global), "\n", sep = "")
+  
+  # Save a compact view
+  out <- dplyr::select(
+    non_monotonic_vax,
+    ID, dplyr::starts_with("Date_"), monotonic_inversion_count
+  )
+  write.csv(out, "data/mzcr_vax_non_monotonic.csv", row.names = FALSE)
+} else {
+  cat("Non-monotonic vaccination date order: 0\n")
+}
+# ---------------------------------------------------------------------------
+
+
+# ================================================================
+# 5) Long-COVID without recorded infection/positivity
+#    (legit in claims data; quantify it explicitly)
+# ================================================================
+longcovid_no_pos <- df_aug_resolved %>%
+  filter(!is.na(Long_COVID) & nzchar(trimws(Long_COVID)) &
+           !has_pos & (is.na(Infection) | Infection == 0L))
+
+cat("Long-COVID entries with no positivity/infection: ", nrow(longcovid_no_pos), "\n")
+write.csv(longcovid_no_pos %>% select(ID, Long_COVID, DCCI, YearOfBirth, Death, DateOfDeathInHealthcareFacility),
+          "data/mzcr_longcovid_without_positivity.csv", row.names = FALSE)
+
+# ================================================================
+# 6) Unknown YOB deep dive by provenance, death, and gender
+# ================================================================
+yob_missing_detail <- df_aug_resolved %>%
+  group_by(provenance, has_any_death, Gender) %>%
+  summarise(
+    n = n(),
+    yob_missing = sum(yob_missing),
+    pct_yob_missing = 100 * yob_missing / n,
+    .groups = "drop"
+  ) %>%
+  arrange(desc(pct_yob_missing))
+print(yob_missing_detail)
+write.csv(yob_missing_detail, "data/mzcr_yob_missing_detail.csv", row.names = FALSE)
+
+# ================================================================
+# 7) ID-level duplicates after your Infection<=1 filter
+# ================================================================
+dup_ids <- df_base %>% count(ID, name = "rows_per_id") %>% filter(rows_per_id > 1)
+cat("IDs with >1 row after filter: ", nrow(dup_ids), "\n")
+write.csv(dup_ids, "data/mzcr_ids_with_multiple_rows_after_filter.csv", row.names = FALSE)
+
+# (Optional) peek differences for a few IDs
+if (nrow(dup_ids) > 0) {
+  sample_ids <- head(dup_ids$ID, 50)
+  write.csv(df_base %>% filter(ID %in% sample_ids) %>% arrange(ID),
+            "data/mzcr_multirow_id_samples.csv", row.names = FALSE)
+}
+
+# ================================================================
+# 8) Extra quick tests
+#    - YearOfBirth token shape
+#    - Mutations present w/o positivity
+# ================================================================
+yob_shape <- df_base %>%
+  mutate(shape = dplyr::case_when(
+    is.na(YearOfBirth) | !nzchar(trimws(YearOfBirth)) ~ "blank_or_na",
+    grepl("^\\d{4}-\\d{4}$", YearOfBirth) ~ "five_year_band",
+    YearOfBirth == "—" ~ "dash_unknown",
+    TRUE ~ "other"
+  )) %>%
+  count(shape, name = "n") %>% arrange(desc(n))
+print(yob_shape)
+
+mutation_wo_pos <- df_aug_resolved %>%
+  filter(!is.na(Mutation) & nzchar(trimws(Mutation)) & !has_pos)
+cat("Rows with Mutation set but no positivity: ", nrow(mutation_wo_pos), "\n")
+write.csv(mutation_wo_pos %>% select(ID, Mutation, DateOfPositivity, TestType),
+          "data/mzcr_mutation_without_positivity.csv", row.names = FALSE)
+
+by_week <- df_aug_resolved %>%
+  filter(has_any_death) %>%
+  mutate(week = ISOweek::ISOweek(week_date_of_death)) %>%
+  group_by(week, provenance) %>%
+  summarise(n = n(),
+            yob_missing = sum(yob_missing),
+            .groups = "drop") %>%
+  group_by(week) %>%
+  mutate(pct_missing = 100 * yob_missing / n) %>%
+  ungroup()
+
+# Which provenance drives missingness each week?
+driver <- by_week %>%
+  group_by(week) %>%
+  slice_max(order_by = pct_missing, n = 1, with_ties = FALSE) %>%
+  ungroup()
+print(driver %>% count(provenance, name = "weeks_as_driver") %>% arrange(desc(weeks_as_driver)))
+

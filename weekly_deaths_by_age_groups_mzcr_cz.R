@@ -99,8 +99,8 @@ weekly_unknown <- weekly_by_age %>%
 
 # Ranges (inclusive, Mondays of ISO weeks)
 rng1_start <- ISOweek::ISOweek2date("2020-W10-1")
-rng1_end   <- ISOweek::ISOweek2date("2021-W15-1")
-rng2_start <- ISOweek::ISOweek2date("2021-W16-1")
+rng1_end   <- ISOweek::ISOweek2date("2021-W10-1")
+rng2_start <- ISOweek::ISOweek2date("2021-W11-1")
 rng2_end   <- ISOweek::ISOweek2date("2023-W52-1")
 
 fit_trend <- function(dat, start_date, end_date, seg_name) {
@@ -131,8 +131,8 @@ fit_trend <- function(dat, start_date, end_date, seg_name) {
 }
 
 # -- RE-COMPUTE the two segments with names ---------------------------
-trend1_df <- fit_trend(weekly_unknown, rng1_start, rng1_end, "2020W10–2021W15")
-trend2_df <- fit_trend(weekly_unknown, rng2_start, rng2_end, "2021W16–2023W52")
+trend1_df <- fit_trend(weekly_unknown, rng1_start, rng1_end, "2020W10–2021W10")
+trend2_df <- fit_trend(weekly_unknown, rng2_start, rng2_end, "2021W11–2023W52")
 
 # Scale % to primary axis units so we can add a secondary Y for %
 K <- max(weekly_unknown$total_deaths, na.rm = TRUE) / 100
@@ -207,7 +207,7 @@ p <- ggplot(weekly_by_age, aes(x = week_start, y = deaths, fill = age_group)) +
   ) +
   labs(
     title = "MZCR.cz - Weekly deaths by age group",
-    subtitle = "Two linear trends of % of Deaths with Unknown age compared to the weekly deaths: 2020W10–2021W15 (solid) and 2021W16–2023W52 (dashed).",
+    subtitle = "Two linear trends of % of Deaths with Unknown age compared to the weekly deaths: 2020W10–2021W10 (solid) and 2021W11–2023W52 (dashed).",
     caption = "Czech Republic - ISO weeks; 'Unknown' = missing year of birth; Age determined on Min. age band.",
     x = NULL, y = "Deaths (weekly total)"
   ) +
@@ -390,3 +390,17 @@ print(utils::head(unique(weekly_unknown_out$pct_of_total_unknown)))# should vary
 dir.create("data", showWarnings = FALSE, recursive = TRUE)
 write.csv(weekly_unknown_out, "data/weekly_deaths_with_missing_yob.csv", row.names = FALSE)
 cat("Wrote weekly summary with share of unknown deaths to data/weekly_deaths_with_missing_yob.csv\n")
+
+# === Mean % Unknown for 2021W11 → end of 2023 ===
+mean_start <- ISOweek::ISOweek2date("2021-W11-1")
+mean_end   <- ISOweek::ISOweek2date("2023-W52-1")  # last ISO week of 2023
+
+mean_pct_unknown_2021w11_2023 <- weekly_unknown %>%
+  dplyr::filter(week_start >= mean_start, week_start <= mean_end) %>%
+  dplyr::summarise(mean_pct = mean(pct_unknown, na.rm = TRUE)) %>%
+  dplyr::pull(mean_pct)
+
+cat(sprintf("Mean %% Unknown (2021W11–%s): %.2f%%\n",
+            ISOweek::ISOweek(mean_end),
+            mean_pct_unknown_2021w11_2023))
+
