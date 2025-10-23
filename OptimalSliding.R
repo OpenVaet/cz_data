@@ -45,7 +45,7 @@ OptimalSliding <- function(max_iterations = 20,
     if ((state$total_surplus %||% 0) < 10) return(FALSE)
     total_deaths <- sum(vapply(state$age_groups, function(ag) state$weekly_data[[ag]]$eurostat %||% 0, numeric(1)))
     if (total_deaths <= 0) total_deaths <- 1
-    (state$total_deficit / total_deaths) > 0.05
+    (state$total_deficit / total_deaths) > 0.02
   }
 
   .edge_cost <- function(i, j) {

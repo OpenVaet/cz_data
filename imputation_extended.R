@@ -13,6 +13,7 @@
 # After sliding, any unknown records are imputed proportionally to remaining deficits across age bins; ages are drawn uniformly within the target bin (capping 90+), and unknown sex is assigned with a fixed split.
 # We report before/after absolute error per age group and in total, flagging bins whose error increases >10%, and verify conservation of totals between original and adjusted counts.
 # Intuitively, the cost design favors the smallest necessary age displacement while penalizing reverse (older→younger) transfers, yielding minimal, biologically plausible corrections.
+# After 2021 week 40, the imputation of unknown is restricted to the oldest age groups. 
 # ------------------------------------------------------------------
 
 suppressWarnings({
@@ -37,6 +38,10 @@ sliding_config <- list(
 age_groups <- c("90-999","85-89","80-84","75-79","70-74","65-69",
                 "60-64","55-59","50-54","45-49","40-44","35-39",
                 "30-34","25-29","20-24","15-19")
+
+# Older-only target groups (used after 2021-W40)
+older_only_groups <- c("90-999","85-89","80-84","75-79","70-74")  # 80+ and 70–79
+
 
 # ---------------- Helpers ----------------
 
@@ -408,46 +413,108 @@ for (year in years) {
       writeLines(sprintf("\nRemaining deficit: %d\nTotal error: %d (was %d)", post_slide_deficit, post_slide_error, initial_error), con = out_example)
     }
 
-    # Phase 2: Impute unknowns
+    # Phase 2: Impute unknowns (only if any eligible unknowns AND remaining deficit)
     if (weekly_unknown > 0 && post_slide_deficit > 0) {
       cat(sprintf("\nImputing %d unknown deaths...\n", weekly_unknown))
-      imputation_plan <- setNames(rep(0L, length(age_groups)), age_groups)
-      assigned <- 0L
 
-      # Distribute proportionally to deficits
+      # Decide which groups are eligible for imputation this week
+      is_restricted_period <- (year > 2021) || (year == 2021 && week > 40)
+      impute_groups <- if (is_restricted_period) older_only_groups else age_groups
+
+      # Remaining deficits by bin (all bins)
+      deficits <- setNames(numeric(length(age_groups)), age_groups)
       for (ag in age_groups) {
         d <- weekly_data[[ag]]
-        deficit <- d$eurostat - d$mzcr_adjusted
-        if (deficit > 0) {
-          proportion <- deficit / post_slide_deficit
-          to_impute <- as.integer(round(weekly_unknown * proportion))
-          to_impute <- min(to_impute, deficit, weekly_unknown - assigned)
+        deficits[ag] <- max(0, d$eurostat - d$mzcr_adjusted)
+      }
+
+      # Work only on the allowed subset when restricted
+      work_deficits <- deficits[impute_groups]
+      total_deficit_work <- sum(work_deficits)
+      assignable <- min(weekly_unknown, total_deficit_work)
+
+      imputation_plan <- setNames(rep(0L, length(age_groups)), age_groups)
+
+      if (assignable > 0 && total_deficit_work > 0) {
+        # Hamilton apportionment within allowed set, with strict caps and oldest-first tie-break
+        targets <- assignable * (work_deficits / total_deficit_work)
+        base_alloc <- floor(targets)
+        remainder  <- targets - base_alloc
+        left <- as.integer(assignable - sum(base_alloc))
+
+        # Seed plan only for allowed groups
+        imputation_plan[impute_groups] <- base_alloc
+
+        if (left > 0) {
+          # Distribute leftover to largest remainders; tie-break by older bins first
+          ord <- order(-remainder, seq_along(impute_groups))  # desc remainder; then older->younger
+          for (k in seq_len(left)) {
+            i <- ord[k]
+            ag <- impute_groups[[i]]
+            imputation_plan[[ag]] <- imputation_plan[[ag]] + 1L
+          }
+        }
+
+        # Enforce per-bin caps within allowed set; redistribute any excess within the same set (older->younger)
+        over_idx <- impute_groups[imputation_plan[impute_groups] > work_deficits]
+        if (length(over_idx) > 0) {
+          excess <- sum(imputation_plan[over_idx] - work_deficits[names(work_deficits) %in% over_idx])
+          imputation_plan[over_idx] <- work_deficits[names(work_deficits) %in% over_idx]
+          if (excess > 0) {
+            room <- work_deficits - imputation_plan[impute_groups]
+            if (sum(room) > 0) {
+              for (ag in impute_groups) {  # older->younger
+                if (excess <= 0) break
+                add <- min(excess, room[[ag]])
+                imputation_plan[[ag]] <- imputation_plan[[ag]] + add
+                excess <- excess - add
+              }
+            }
+          }
+        }
+
+        # Apply
+        for (ag in impute_groups) {
+          to_impute <- as.integer(imputation_plan[[ag]] %||% 0)
           if (to_impute > 0) {
             weekly_data[[ag]]$mzcr_adjusted <- weekly_data[[ag]]$mzcr_adjusted + to_impute
             weekly_data[[ag]]$imputed <- to_impute
-            imputation_plan[[ag]] <- to_impute
-            assigned <- assigned + to_impute
             global_stats$total_imputed <- global_stats$total_imputed + to_impute
             cat(sprintf("  Imputed %d to %s\n", to_impute, ag))
             if (is_example) writeLines(sprintf("Impute: %d unknowns \u2192 %s", to_impute, ag), con = out_example)
           }
         }
+
+        # Guardrail: never exceed Eurostat
+        for (ag in impute_groups) {
+          d <- weekly_data[[ag]]
+          if (weekly_data[[ag]]$mzcr_adjusted > d$eurostat) {
+            overflow <- weekly_data[[ag]]$mzcr_adjusted - d$eurostat
+            if (overflow > 0) {
+              weekly_data[[ag]]$mzcr_adjusted <- d$eurostat
+              warning(sprintf("Capped overflow of %d in %s after imputation", as.integer(overflow), ag))
+            }
+          }
+        }
+
+      } else {
+        cat("  No assignable unknowns in allowed groups (deficits already zero or restricted).\n")
       }
 
-      # Assign specific records
+      # Assign specific records according to the plan (iterate only on allowed groups)
       ur_year <- unknown_records[[as.character(year)]] %||% new.env()
       ur_week <- ur_year[[as.character(week)]] %||% new.env()
       unknown_ids <- ls(ur_week)
       idx <- 1L
 
-      for (ag in age_groups) {
+      for (ag in impute_groups) {
         count <- imputation_plan[[ag]] %||% 0
         if (count <= 0) next
         for (k in seq_len(count)) {
           if (idx > length(unknown_ids)) break
           id <- unknown_ids[[idx]]; idx <- idx + 1L
           rec <- ur_week[[id]]
-          # Random age within group
+
           parts <- strsplit(ag, "-", fixed = TRUE)[[1]]
           min_age <- as.integer(parts[1]); max_age <- as.integer(parts[2]); if (max_age == 999) max_age <- 105
           imputed_age <- min_age + as.integer(floor(runif(1) * (max_age - min_age + 1)))
@@ -461,6 +528,8 @@ for (year in years) {
         }
       }
     }
+
+
 
     # Final stats
     final_error <- sum(vapply(age_groups, function(ag) {
@@ -527,3 +596,364 @@ cat("  - outputs/optimal_slides.csv: All sliding movements\n")
 cat("  - outputs/optimal_imputed_final.csv: Final imputed dataset\n")
 cat("  - outputs/example_weeks.txt: Detailed examples\n")
 cat(paste(rep("=", 70), collapse = ""), "\n", sep = "")
+
+# -------------------------------------------------------------------
+# POPULATION IMPUTATION :
+# 1) Use Eurostat 2024 population (CZ) age/sex shares as a CAP to impute
+#    unknown YOB/sex among LIVING persons (no death date).
+# 2) Load deaths imputation output (outputs/optimal_imputed_final.csv),
+#    apply to the deaths, and merge everything into the final dataset:
+#       data/mzcr_no_or_first_infection_with_imputation.csv
+# -------------------------------------------------------------------
+
+suppressPackageStartupMessages({
+  library(data.table)
+  library(lubridate)
+})
+
+`%||%` <- function(a, b) if (is.null(a) || length(a) == 0 || is.na(a)) b else a
+
+# ----------- Config / paths -----------
+eurostat_pop_file <- "data/demo_pjan_linear_2_0.csv"
+mzcr_origin_file  <- "data/mzcr_no_or_first_infection.csv"
+deaths_imp_file   <- "outputs/optimal_imputed_final.csv"  # from imputation_extended.R
+out_file          <- "data/mzcr_no_or_first_infection_with_imputation.csv"
+
+dir.create("data", showWarnings = FALSE, recursive = TRUE)
+
+age_levels <- c("0-4","5-9","10-14","15-19","20-24","25-29","30-34",
+                "35-39","40-44","45-49","50-54","55-59","60-64",
+                "65-69","70-74","75-79","80-84","85-89","90-999")
+sexes <- c("M","F")
+
+age_group_of_age <- function(a) {
+  a <- as.integer(a)
+  as.character(cut(
+    a,
+    breaks = c(-Inf, 4, 9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59, 64, 69, 74, 79, 84, 89, Inf),
+    labels = age_levels, right = TRUE
+  ))
+}
+
+# Largest remainder allocation with caps (items_df columns: bin, weight, cap)
+apportion_with_caps <- function(total, items_df) {
+  alloc <- integer(nrow(items_df)); names(alloc) <- items_df$bin
+  if (total <= 0L || nrow(items_df) == 0L) return(alloc)
+
+  rows <- items_df[cap > 0L]
+  if (nrow(rows) == 0L) return(alloc)
+
+  sum_w <- sum(rows$weight)
+  if (sum_w <= 0) {
+    rem <- total
+    for (i in seq_len(nrow(rows))) {
+      if (rem <= 0) break
+      take <- min(rows$cap[i], rem)
+      alloc[rows$bin[i]] <- take
+      rem <- rem - take
+    }
+    return(alloc)
+  }
+
+  rows[, quota   := total * (weight / sum_w)]
+  rows[, floor_q := pmin(cap, floor(quota))]
+  allocated <- sum(rows$floor_q)
+  remain <- total - allocated
+  rows[, remainder := quota - floor_q]
+
+  if (remain > 0) {
+    ord <- order(rows$remainder, decreasing = TRUE)
+    for (i in ord) {
+      if (remain <= 0) break
+      if (rows$floor_q[i] < rows$cap[i]) {
+        rows$floor_q[i] <- rows$floor_q[i] + 1L
+        remain <- remain - 1L
+      }
+    }
+  } else if (remain < 0) {
+    ord <- order(rows$remainder, decreasing = FALSE)
+    for (i in ord) {
+      if (remain >= 0) break
+      if (rows$floor_q[i] > 0L) {
+        rows$floor_q[i] <- rows$floor_q[i] - 1L
+        remain <- remain + 1L
+      }
+    }
+  }
+
+  alloc[rows$bin] <- rows$floor_q
+  alloc
+}
+
+# ------------------ 1) Load Eurostat 2024 population ------------------
+euro <- fread(eurostat_pop_file, sep = "auto", encoding = "UTF-8", showProgress = FALSE)
+
+# normalize column names (handles both "labels=both" and minimal files)
+setnames(euro, old = intersect(names(euro), c("sex: Sex","sex")), new = "sex", skip_absent = TRUE)
+setnames(euro, old = intersect(names(euro), c("geo: Geopolitical entity (reporting)","geo")), new = "geo", skip_absent = TRUE)
+setnames(euro, old = intersect(names(euro), c("OBS_VALUE: Observation value","OBS_VALUE")), new = "obs_value", skip_absent = TRUE)
+setnames(euro, old = intersect(names(euro), c("TIME_PERIOD: Time","TIME_PERIOD")), new = "time_period", skip_absent = TRUE)
+setnames(euro, old = intersect(names(euro), c("age: Age class","age")), new = "age", skip_absent = TRUE)
+
+if (is.character(euro$geo)) euro[, geo := sub(":.*$", "", geo)]
+euro <- euro[geo == "CZ"]
+
+# normalize year
+euro[, year := suppressWarnings(as.integer(time_period))]
+euro <- euro[year == 2024]
+
+# Map age labels to our 5y bins
+map_pop_age_group <- function(a) {
+  if (is.na(a)) return(NA_character_)
+  if (a %chin% c("TOTAL","UNK")) return(NA_character_)
+  if (a == "Y_LT1") return("0-4")
+  if (a == "Y_OPEN") return("90-999")
+  if (grepl("^Y[0-9]+$", a)) {
+    n <- as.integer(sub("^Y", "", a))
+    return(age_group_of_age(n))
+  }
+  # some files ship with plain integers
+  if (!is.na(suppressWarnings(as.integer(a)))) {
+    return(age_group_of_age(as.integer(a)))
+  }
+  NA_character_
+}
+
+euro[, age_group := vapply(age, map_pop_age_group, FUN.VALUE = character(1))]
+# keep only M/F and valid bins
+euro <- euro[sex %chin% c("M","F") & !is.na(age_group)]
+
+euro_pop <- euro[, .(eurostat_pop = sum(as.numeric(obs_value), na.rm = TRUE)),
+                 by = .(sex, age_group)]
+
+# fill missing bins with 0
+euro_pop <- merge(CJ(sex = sexes, age_group = age_levels, unique = TRUE),
+                  euro_pop, by = c("sex","age_group"), all.x = TRUE)
+euro_pop[is.na(eurostat_pop), eurostat_pop := 0]
+
+# sex shares and age shares (within sex)
+euro_total_pop   <- euro_pop[, sum(eurostat_pop)]
+euro_sex_totals  <- euro_pop[, .(sex_total = sum(eurostat_pop)), by = sex]
+setkey(euro_sex_totals, sex)
+
+# ------------------ 2) Load origin + deaths imputation ------------------
+stopifnot(file.exists(mzcr_origin_file))
+orig <- fread(mzcr_origin_file, sep = "auto", encoding = "UTF-8", showProgress = FALSE)
+setnames(orig, old = "ID", new = "id", skip_absent = TRUE)
+
+orig[, `:=`(
+  id                 = suppressWarnings(as.integer(id)),
+  week_date_of_death = as.character(week_date_of_death),
+  year_of_birth_end  = suppressWarnings(as.integer(year_of_birth_end)),
+  gender             = suppressWarnings(as.integer(gender)),
+  Date_First_Dose                    = as.character(Date_First_Dose),
+  Date_Second_Dose                   = as.character(Date_Second_Dose),
+  Date_Third_Dose                    = as.character(Date_Third_Dose),
+  VaccinationProductCode_First_Dose  = as.character(VaccinationProductCode_First_Dose),
+  VaccinationProductCode_Second_Dose = as.character(VaccinationProductCode_Second_Dose),
+  VaccinationProductCode_Third_Dose  = as.character(VaccinationProductCode_Third_Dose),
+  week_date_of_positivity            = as.character(week_date_of_positivity)
+)]
+
+# base sex from gender (1->M, 2->F, else U)
+orig[, sex := fcase(
+  gender == 1L, "M",
+  gender == 2L, "F",
+  default = "U"
+)]
+
+# Load deaths imputation (from imputation_extended.R)
+stopifnot(file.exists(deaths_imp_file))
+dimp <- fread(deaths_imp_file, encoding = "UTF-8")
+setnames(dimp,
+         old = c("id","orig_sex","orig_yob","imputed_sex","imputed_yob",
+                 "imputed_age_group","death_year","death_week","method"),
+         new = c("id","orig_sex","orig_yob","imp_sex","imp_yob",
+                 "imp_age_group","death_year","death_week","method"),
+         skip_absent = TRUE)
+dimp[, id := suppressWarnings(as.integer(id))]
+
+# Apply deaths imputation: set YOB/sex for those with method != 'original'
+setkey(orig, id)
+setkey(dimp, id)
+orig <- dimp[orig]  # prefix imp_* columns now available
+
+# If we have an imputed YOB/sex for this id (i.e., death case), overwrite
+orig[!is.na(imp_yob), year_of_birth_end := as.integer(imp_yob)]
+orig[!is.na(imp_sex), sex               := imp_sex]
+
+# ------------------ 3) Build living pool and impute YOB/sex by Eurostat caps ---------
+# LIVING = no death date (missing or empty string)
+alive <- orig[is.na(week_date_of_death) | week_date_of_death == ""]
+
+# Known-YOB living (kept; no change to their YOB)
+alive_known <- alive[!is.na(year_of_birth_end)]
+
+# Unknown-YOB living (impute)
+alive_unknown <- alive[is.na(year_of_birth_end), .(id, sex)]
+
+# Partition unknown by sex flags
+ids_M <- alive_unknown[sex == "M", id]
+ids_F <- alive_unknown[sex == "F", id]
+ids_U <- alive_unknown[!(sex %chin% c("M","F")), id]
+
+# Split U into M/F by Eurostat sex shares
+shareM <- euro_sex_totals["M", sex_total] / max(1, euro_total_pop)
+shareF <- euro_sex_totals["F", sex_total] / max(1, euro_total_pop)
+
+U_total <- length(ids_U)
+to_M <- as.integer(round(U_total * shareM))
+to_M <- min(to_M, U_total)                   # guard
+to_F <- U_total - to_M
+
+if (to_M > 0) { ids_M <- c(ids_M, ids_U[seq_len(to_M)]); ids_U <- ids_U[-seq_len(to_M)] }
+if (to_F > 0 && length(ids_U) > 0) { ids_F <- c(ids_F, ids_U[seq_len(to_F)]); ids_U <- ids_U[-seq_len(to_F)] }
+# Any residue (due to rounding) alternate
+while (length(ids_U) > 0) {
+  if (length(ids_M) <= length(ids_F)) { ids_M <- c(ids_M, ids_U[1]); ids_U <- ids_U[-1]
+  } else { ids_F <- c(ids_F, ids_U[1]); ids_U <- ids_U[-1] }
+}
+
+# Helper: allocate N unknowns of one sex across age bins by Eurostat shares (CAP by shares)
+alloc_unknown_by_shares <- function(N, sex_char) {
+  if (N <= 0) return(setNames(integer(length(age_levels)), age_levels))
+  wt <- euro_pop[sex == sex_char, .(age_group, eurostat_pop)]
+  if (nrow(wt) == 0 || sum(wt$eurostat_pop) <= 0) {
+    wt <- data.table(age_group = age_levels, eurostat_pop = 1L)
+  } else {
+    wt <- merge(data.table(age_group = age_levels), wt, by = "age_group", all.x = TRUE)
+    wt[is.na(eurostat_pop), eurostat_pop := 0L]
+    if (sum(wt$eurostat_pop) <= 0) wt[, eurostat_pop := 1L]
+  }
+
+  items <- data.table(
+    bin = wt$age_group,
+    weight = wt$eurostat_pop,
+    cap = pmax(0L, as.integer(round(N * (wt$eurostat_pop / sum(wt$eurostat_pop)))))
+  )
+  # Make sure sum(cap) >= N (if rounding down), bump by largest remainders
+  caps_sum <- sum(items$cap)
+  if (caps_sum < N) {
+    need <- N - caps_sum
+    # add one to top 'need' weights
+    ord <- order(items$weight, decreasing = TRUE)
+    idx <- head(ord, need)
+    items$cap[idx] <- items$cap[idx] + 1L
+  }
+  # If caps_sum > N (unlikely), trim by smallest weights
+  if (sum(items$cap) > N) {
+    over <- sum(items$cap) - N
+    ord <- order(items$weight, decreasing = FALSE)
+    i <- 1L
+    while (over > 0 && i <= length(ord)) {
+      j <- ord[i]
+      if (items$cap[j] > 0L) { items$cap[j] <- items$cap[j] - 1L; over <- over - 1L }
+      i <- i + 1L
+    }
+  }
+  # Allocate exactly N (with caps=per-share caps); this equals 'items$cap' now
+  setNames(items$cap, items$bin)
+}
+
+take_ids_to_rows <- function(ids_vec, take_per_ag, sex_char, year_ref = 2024L) {
+  out <- vector("list", 0L); left <- ids_vec
+  for (ag in age_levels) {
+    k <- take_per_ag[[ag]] %||% 0L
+    if (k <= 0) next
+    if (k > length(left)) k <- length(left)
+    if (k <= 0) next
+    use <- left[seq_len(k)]
+    left <- left[-seq_len(k)]
+    from <- as.integer(sub("-.*", "", ag))
+    # yobe = 2024 - (lower_bound + 1)
+    yobe <- year_ref - (from + 1L)
+    out[[length(out) + 1L]] <- data.table(
+      id = use,
+      sex = sex_char,
+      year_of_birth_end = as.integer(yobe)
+    )
+  }
+  if (length(left) > 0) {
+    # Any residue (shouldn't happen with exact caps) – put into the youngest bin
+    from <- as.integer(sub("-.*", "", age_levels[1]))
+    yobe <- year_ref - (from + 1L)
+    out[[length(out) + 1L]] <- data.table(
+      id = left,
+      sex = sex_char,
+      year_of_birth_end = as.integer(yobe)
+    )
+  }
+  if (length(out)) rbindlist(out) else data.table(id=integer(), sex=character(), year_of_birth_end=integer())
+}
+
+# Build imputations for living unknowns
+imputed_living <- data.table(id=integer(), sex=character(), year_of_birth_end=integer())
+
+# M pool
+if (length(ids_M) > 0) {
+  allocM <- alloc_unknown_by_shares(length(ids_M), "M")
+  rowsM  <- take_ids_to_rows(ids_M, allocM, "M", year_ref = 2024L)
+  imputed_living <- rbind(imputed_living, rowsM, use.names = TRUE)
+}
+
+# F pool
+if (length(ids_F) > 0) {
+  allocF <- alloc_unknown_by_shares(length(ids_F), "F")
+  rowsF  <- take_ids_to_rows(ids_F, allocF, "F", year_ref = 2024L)
+  imputed_living <- rbind(imputed_living, rowsF, use.names = TRUE)
+}
+
+# ------------------ 4) Overlay living imputations onto origin ------------------
+setkey(imputed_living, id)
+orig <- imputed_living[orig]  # adds (i.sex, i.year_of_birth_end) as columns 'sex'/'year_of_birth_end' if NA in orig? -> careful
+
+# We want to only overwrite where the origin has NO death date AND missing YOB.
+# Create flags to avoid touching deaths or known-YOB living.
+is_alive <- is.na(orig$week_date_of_death) | orig$week_date_of_death == ""
+has_yob  <- !is.na(orig$year_of_birth_end)
+
+# Overwrite for alive rows with missing YOB using imputed values
+to_fill <- is_alive & !has_yob
+orig[to_fill & !is.na(i.year_of_birth_end), year_of_birth_end := as.integer(i.year_of_birth_end)]
+orig[to_fill & !is.na(i.sex),               sex               := i.sex]
+
+# Drop helper join columns (data.table prefixes 'i.' for RHS)
+if ("i.year_of_birth_end" %in% names(orig)) orig[, `i.year_of_birth_end` := NULL]
+if ("i.sex"               %in% names(orig)) orig[, `i.sex`               := NULL]
+
+# ------------------ 5) Recompute ages and age groups; validate ------------------
+# temporary death_date for calculations (preserve original week_date_of_death string)
+orig[, death_date_tmp := as.IDate(fifelse(week_date_of_death == "" | is.na(week_date_of_death),
+                                          NA_character_, week_date_of_death))]
+orig[, `:=`(
+  death_year = ifelse(is.na(death_date_tmp), NA_integer_, isoyear(death_date_tmp)),
+  age        = ifelse(is.na(death_date_tmp),
+                      2024L - year_of_birth_end - 1L,        # alive age as of 2024-01-01
+                      death_year - year_of_birth_end),
+  age_at_death = ifelse(is.na(death_date_tmp), NA_integer_, age),
+  age_group    = age_group_of_age(age)
+)]
+
+# Sanity: ensure no missing YOB and no 'U' sex remain
+missing_yob_n <- orig[is.na(year_of_birth_end), .N]
+unknown_sex_n <- orig[is.na(sex) | sex == "U", .N]
+if (missing_yob_n > 0) {
+  stop(sprintf("Some rows still have missing year_of_birth_end after imputation: %d", missing_yob_n))
+}
+if (unknown_sex_n > 0) {
+  stop(sprintf("Some rows still have unknown sex ('U') after imputation: %d", unknown_sex_n))
+}
+
+# ------------------ 6) Write final CSV (same shape as previous pipeline) ------------------
+final_cols <- c(
+  "id","sex","year_of_birth_end","age","age_group","age_at_death",
+  "week_date_of_death",
+  "Date_First_Dose","Date_Second_Dose","Date_Third_Dose",
+  "VaccinationProductCode_First_Dose","VaccinationProductCode_Second_Dose","VaccinationProductCode_Third_Dose",
+  "week_date_of_positivity"
+)
+for (cc in final_cols) if (!cc %in% names(orig)) orig[, (cc) := NA_character_]
+setcolorder(orig, final_cols)
+
+fwrite(orig[, ..final_cols], out_file, quote = FALSE, na = "")
+cat("Wrote", out_file, "\n")
