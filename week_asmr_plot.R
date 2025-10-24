@@ -242,7 +242,7 @@ create_main_asmr_plot <- function() {
     scale_x_date(date_breaks = "3 months", date_labels = "%b %Y",
                  expand = expansion(mult = c(0.02, 0.02))) +
     labs(
-      title = "Weekly ASMR by Vaccination Status - Non-Imputed",
+      title = "Weekly Age-Standardized Mortality Rates (ASMR) by Vaccination Status - Non-Imputed",
       subtitle = "Per 100,000 person-years - ESP 2013 standardized - <15 excluded - unknown YOB excluded",
       x = "Date", y = "ASMR per 100,000 person-years",
       caption = paste(

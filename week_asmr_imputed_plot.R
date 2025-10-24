@@ -381,7 +381,7 @@ create_main_asmr_plot <- function() {
       expand = expansion(mult = c(0.02, 0.02))
     ) +
     labs(
-      title = "Weekly Age-Standardized Mortality Rates (ASMR) by Vaccination Status",
+      title = "Weekly Age-Standardized Mortality Rates (ASMR) by Vaccination Status - With Imputation",
       subtitle = "Per 100,000 person-years, ESP 2013 standardized, Unknown YOB Imputed, <15 excluded",
       x = "Date",
       y = "ASMR per 100,000 person-years",
