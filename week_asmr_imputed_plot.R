@@ -16,7 +16,7 @@ create_interactive_asmr_plot <- function() {
   }
   
   # Read the ASMR data
-  asmr_data <- read.csv("outputs/weekly_asmr.csv", stringsAsFactors = FALSE) %>%
+  asmr_data <- read.csv("outputs/weekly_asmr_with_imputation.csv", stringsAsFactors = FALSE) %>%
     mutate(
       week_start = as.Date(paste0(year, "-01-01")) + weeks(week - 1),
       week_label = paste0(year, "-W", sprintf("%02d", week))
@@ -51,7 +51,7 @@ create_interactive_asmr_plot <- function() {
               text = ~paste("Week:", week_label,
                            "<br>ASMR:", round(asmr_total, 2)),
               hoverinfo = 'text') %>%
-    layout(title = list(text = "Weekly Age-Standardized Mortality Rates (ASMR) by Vaccination Status",
+    layout(title = list(text = "Weekly Age-Standardized Mortality Rates (ASMR) by Vaccination Status - With Imputation",
                        font = list(size = 18)),
            xaxis = list(title = "Date",
                        rangeslider = list(visible = TRUE),
@@ -65,18 +65,18 @@ create_interactive_asmr_plot <- function() {
            margin = list(t = 80))
   
   # Save interactive plot
-  htmlwidgets::saveWidget(p, "outputs/weekly_asmr_interactive.html", 
+  htmlwidgets::saveWidget(p, "outputs/weekly_asmr_interactive_with_imputation.html", 
                           selfcontained = TRUE,
                           title = "Weekly ASMR Analysis")
   
-  cat("Interactive plot saved to outputs/weekly_asmr_interactive.html\n")
+  cat("Interactive plot saved to outputs/weekly_asmr_interactive_with_imputation.html\n")
   return(p)
 }
 
 # Create a heatmap showing weekly patterns
 create_asmr_heatmap <- function() {
   # Read the ASMR data
-  asmr_data <- read.csv("outputs/weekly_asmr.csv", stringsAsFactors = FALSE) %>%
+  asmr_data <- read.csv("outputs/weekly_asmr_with_imputation.csv", stringsAsFactors = FALSE) %>%
     mutate(
       # Calculate rate ratio
       rate_ratio = ifelse(asmr_vaccinated > 0, 
@@ -129,21 +129,21 @@ create_asmr_heatmap <- function() {
       legend.key.width = unit(2, "cm")
     )
   
-  ggsave("outputs/weekly_asmr_heatmap.png", 
+  ggsave("outputs/weekly_asmr_heatmap_with_imputation.png", 
          plot = p, 
          width = 14, 
          height = 10, 
          dpi = 300,
          bg = "white")
   
-  cat("Heatmap saved to outputs/weekly_asmr_heatmap.png\n")
+  cat("Heatmap saved to outputs/weekly_asmr_heatmap_with_imputation.png\n")
   return(p)
 }
 
 # Create a cumulative mortality plot
 create_cumulative_plot <- function() {
   # Read the data
-  asmr_data <- read.csv("outputs/weekly_asmr.csv", stringsAsFactors = FALSE) %>%
+  asmr_data <- read.csv("outputs/weekly_asmr_with_imputation.csv", stringsAsFactors = FALSE) %>%
     mutate(
       week_start = as.Date(paste0(year, "-01-01")) + weeks(week - 1)
     ) %>%
@@ -207,21 +207,21 @@ create_cumulative_plot <- function() {
       panel.grid.minor = element_blank()
     )
   
-  ggsave("outputs/weekly_asmr_cumulative.png",
+  ggsave("outputs/weekly_asmr_cumulative_with_imputation.png",
          plot = p,
          width = 12,
          height = 7,
          dpi = 300,
          bg = "white")
   
-  cat("Cumulative plot saved to outputs/weekly_asmr_cumulative.png\n")
+  cat("Cumulative plot saved to outputs/weekly_asmr_cumulative_with_imputation.png\n")
   return(p)
 }
 
 # Create a rate ratio plot with confidence bands
 create_rate_ratio_plot <- function() {
   # Read the data
-  asmr_data <- read.csv("outputs/weekly_asmr.csv", stringsAsFactors = FALSE) %>%
+  asmr_data <- read.csv("outputs/weekly_asmr_with_imputation.csv", stringsAsFactors = FALSE) %>%
     mutate(
       week_start = as.Date(paste0(year, "-01-01")) + weeks(week - 1),
       # Calculate rate ratio
@@ -281,7 +281,7 @@ create_rate_ratio_plot <- function() {
       panel.grid.minor = element_blank()
     )
   
-  ggsave("outputs/weekly_asmr_rate_ratio.png",
+  ggsave("outputs/weekly_asmr_rate_ratio_with_imputation.png",
          plot = p,
          width = 12,
          height = 7,
@@ -298,8 +298,8 @@ cat("ASMR VISUALIZATION SCRIPT\n")
 cat(rep("=", 60), "\n\n", sep = "")
 
 # Check if output file exists
-if (!file.exists("outputs/weekly_asmr.csv")) {
-  stop("Error: outputs/weekly_asmr.csv not found. Please run the main analysis first.")
+if (!file.exists("outputs/weekly_asmr_with_imputation.csv")) {
+  stop("Error: outputs/weekly_asmr_with_imputation.csv not found. Please run the main analysis first.")
 }
 
 # Create output directory if it doesn't exist
@@ -310,7 +310,7 @@ if (!dir.exists("outputs")) {
 # Function to create the main ASMR plot
 create_main_asmr_plot <- function() {
   # Read the ASMR data
-  asmr_data <- read.csv("outputs/weekly_asmr.csv", stringsAsFactors = FALSE)
+  asmr_data <- read.csv("outputs/weekly_asmr_with_imputation.csv", stringsAsFactors = FALSE)
   
   # Convert year-week to date for plotting
   asmr_data <- asmr_data %>%
@@ -382,7 +382,7 @@ create_main_asmr_plot <- function() {
     ) +
     labs(
       title = "Weekly Age-Standardized Mortality Rates (ASMR) by Vaccination Status",
-      subtitle = "Per 100,000 person-years, ESP 2013 standardized",
+      subtitle = "Per 100,000 person-years, ESP 2013 standardized, Unknown YOB Imputed, <15 excluded",
       x = "Date",
       y = "ASMR per 100,000 person-years",
       caption = paste("Data source: MZCR | Analysis period:", 
@@ -426,20 +426,20 @@ cat("Generating standard ASMR plot...\n")
 main_plot <- create_main_asmr_plot()
 
 # Save the main plot
-ggsave("outputs/weekly_asmr_plot.png", 
+ggsave("outputs/weekly_asmr_plot_with_imputation.png", 
        plot = main_plot, 
        width = 14, 
        height = 8, 
        dpi = 300,
        bg = "white")
 
-ggsave("outputs/weekly_asmr_plot.pdf", 
+ggsave("outputs/weekly_asmr_plot_with_imputation.pdf", 
        plot = main_plot, 
        width = 14, 
        height = 8,
        device = "pdf")
 
-cat("Main ASMR plot saved to outputs/weekly_asmr_plot.png and .pdf\n")
+cat("Main ASMR plot saved to outputs/weekly_asmr_plot_with_imputation.png and .pdf\n")
 
 cat("\nGenerating additional visualizations...\n")
 
@@ -464,7 +464,7 @@ cat("\n", rep("=", 60), "\n", sep = "")
 cat("DETAILED ASMR ANALYSIS\n")
 cat(rep("=", 60), "\n\n", sep = "")
 
-asmr_data <- read.csv("outputs/weekly_asmr.csv", stringsAsFactors = FALSE)
+asmr_data <- read.csv("outputs/weekly_asmr_with_imputation.csv", stringsAsFactors = FALSE)
 
 # Overall statistics
 cat("Overall Statistics:\n")

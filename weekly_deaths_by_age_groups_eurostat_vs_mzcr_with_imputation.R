@@ -67,7 +67,7 @@ weekly_mzcr <- df %>%
     ),
     age_group = factor(age_group, levels = age_levels)
   ) %>%
-  filter(iso_year >= 2020, iso_year <= 2024) %>%
+  filter(iso_year >= 2020, iso_year < 2024) %>%
   group_by(week_start, age_group) %>%
   summarise(deaths = n(), .groups = "drop") %>%
   tidyr::complete(week_start, age_group, fill = list(deaths = 0)) %>%
@@ -147,7 +147,7 @@ weekly_eu <- eu_main %>%
     age_group = factor(age_group, levels = age_levels),
     iso_year = as.integer(format(week_start, "%G"))
   ) %>%
-  filter(iso_year >= 2020, iso_year <= 2024) %>%
+  filter(iso_year >= 2020, iso_year < 2024) %>%
   select(-iso_year)
 
 cat("Processed Eurostat data (≥15 only, no Unknown)\n\n")
@@ -238,7 +238,7 @@ cat("\n=== Creating Faceted Comparison Plot ===\n")
 
 # Restrict scope to 2020-W10 .. 2024-W20 (weeks anchored to Monday)
 range_start <- ISOweek::ISOweek2date("2020-W10-1")
-range_end   <- ISOweek::ISOweek2date("2024-W20-1")
+range_end   <- ISOweek::ISOweek2date("2023-W52-1")
 
 weekly_mzcr_filtered <- weekly_mzcr %>%
   dplyr::filter(dplyr::between(week_start, range_start, range_end))

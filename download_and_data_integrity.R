@@ -409,6 +409,200 @@ report_missing <- function(d, name) {
 
 report_missing(df_base,          "df_base (<= first infection)")
 
+# ================================================================
+# Test) Vaccination chronology anomalies
+#    - Later dose present but earlier dose missing
+#    - Non-monotonic dose dates
+# ================================================================
+dose_cols <- c("date_first_dose_parsed","date_second_dose_parsed","date_third_dose_parsed",
+               "date_fourth_dose_parsed","date_fifth_dose_parsed","date_sixth_dose_parsed",
+               "date_seventh_dose_parsed")
+
+later_no_earlier <- df_aug_resolved %>%
+  mutate(
+    d1 = !is.na(date_first_dose_parsed),
+    d2 = !is.na(date_second_dose_parsed),
+    d3 = !is.na(date_third_dose_parsed),
+    d4 = !is.na(date_fourth_dose_parsed),
+    d5 = !is.na(date_fifth_dose_parsed),
+    d6 = !is.na(date_sixth_dose_parsed),
+    d7 = !is.na(date_seventh_dose_parsed),
+    gap12 = d2 & !d1,
+    gap23 = d3 & !d2,
+    gap34 = d4 & !d3,
+    gap45 = d5 & !d4,
+    gap56 = d6 & !d5,
+    gap67 = d7 & !d6
+  ) %>%
+  filter(gap12 | gap23 | gap34 | gap45 | gap56 | gap67)
+cat("Later dose present while prior missing: ", nrow(later_no_earlier), "\n")
+write.csv(later_no_earlier %>% select(ID, starts_with("Date_")),
+          "data/mzcr_vax_gaps.csv", row.names = FALSE)
+
+# --- Define parsed dose columns (must exist in df_aug_resolved) ---
+dose_parsed_cols <- c(
+  "date_first_dose_parsed","date_second_dose_parsed","date_third_dose_parsed",
+  "date_fourth_dose_parsed","date_fifth_dose_parsed","date_sixth_dose_parsed",
+  "date_seventh_dose_parsed"
+)
+
+# If you haven't already created has_any_vax, do it now (fast + vectorized)
+if (!"has_any_vax" %in% names(df_aug_resolved)) {
+  df_aug_resolved <- df_aug_resolved %>%
+    dplyr::mutate(
+      has_any_vax = Reduce(`|`, lapply(dose_parsed_cols, function(x) !is.na(.data[[x]])))
+    )
+}
+
+# Work only on rows that have any vaccination at all to cut size early
+idx_vax <- which(df_aug_resolved$has_any_vax %in% TRUE)
+if (length(idx_vax)) {
+  # Build numeric matrix of dose dates (Date -> numeric days since epoch)
+  D <- do.call(
+    cbind,
+    lapply(dose_parsed_cols, function(x) as.numeric(df_aug_resolved[[x]][idx_vax]))
+  )
+  # D is (n_vax x 7); NA stays NA
+  
+  # Compute pairwise “inversions”: later dose j earlier than dose i (j > i)
+  combs <- utils::combn(ncol(D), 2)  # all i<j pairs
+  any_bad <- rep(FALSE, nrow(D))
+  bad_cnt <- integer(nrow(D))        # optional: number of inversions per row
+  
+  for (k in seq_len(ncol(combs))) {
+    i <- combs[1, k]; j <- combs[2, k]
+    # Compare only where both dates exist
+    bad <- is.finite(D[, i]) & is.finite(D[, j]) & (D[, j] < D[, i])
+    any_bad <- any_bad | bad
+    bad_cnt <- bad_cnt + bad
+  }
+  
+  non_mono_mask_global <- rep(FALSE, nrow(df_aug_resolved))
+  non_mono_mask_global[idx_vax] <- any_bad
+  
+  non_monotonic_vax <- df_aug_resolved[non_mono_mask_global, , drop = FALSE]
+  non_monotonic_vax$monotonic_inversion_count <- bad_cnt[any_bad]
+  
+  cat("Non-monotonic vaccination date order: ",
+      sum(non_mono_mask_global), "\n", sep = "")
+  
+  # Save a compact view
+  out <- dplyr::select(
+    non_monotonic_vax,
+    ID, dplyr::starts_with("Date_"), monotonic_inversion_count
+  )
+  write.csv(out, "data/mzcr_vax_non_monotonic.csv", row.names = FALSE)
+} else {
+  cat("Non-monotonic vaccination date order: 0\n")
+}
+
+# ---------------------------------------------------------------------------
+
+# ================================================================
+# Normalize vaccination doses: slide-left non-missing doses (keep order)
+# -> also shifts VaccinationProductCode_* alongside the dates
+# ================================================================
+ord_words <- c("First","Second","Third","Fourth","Fifth","Sixth","Seventh")
+dose_cols_str <- paste0("Date_", ord_words, "_Dose")
+prod_cols     <- paste0("VaccinationProductCode_", ord_words, "_Dose")
+
+# Long form: dates
+dates_long <- df_aug_resolved %>%
+  dplyr::select(ID, dplyr::all_of(dose_cols_str)) %>%
+  tidyr::pivot_longer(-ID, names_to = "dose_label", values_to = "dose_date_str") %>%
+  dplyr::mutate(
+    dose_ord = sub("^Date_(.*)_Dose$", "\\1", dose_label),
+    dose_num = match(dose_ord, ord_words),
+    dose_date_str = dplyr::na_if(trimws(dose_date_str), "")
+  )
+
+# Long form: product codes
+prods_long <- df_aug_resolved %>%
+  dplyr::select(ID, dplyr::all_of(prod_cols)) %>%
+  tidyr::pivot_longer(-ID, names_to = "prod_label", values_to = "prod_code") %>%
+  dplyr::mutate(
+    dose_ord = sub("^VaccinationProductCode_(.*)_Dose$", "\\1", prod_label),
+    dose_num = match(dose_ord, ord_words)
+  ) %>%
+  dplyr::select(ID, dose_num, prod_code)
+
+# Merge and compute compacted dose numbers (1..k) for non-missing dates
+long <- dates_long %>%
+  dplyr::left_join(prods_long, by = c("ID","dose_num")) %>%
+  dplyr::arrange(ID, dose_num) %>%
+  dplyr::mutate(dose_date_parsed = to_iso_monday_flex(dose_date_str))
+
+long_compact <- long %>%
+  dplyr::filter(!is.na(dose_date_parsed)) %>%
+  dplyr::group_by(ID) %>%
+  dplyr::mutate(dose_num_norm = dplyr::row_number()) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(dose_ord_norm = ord_words[dose_num_norm])
+
+# Wide: normalized date columns
+wide_dates <- long_compact %>%
+  dplyr::select(ID, dose_ord_norm, dose_date_str) %>%
+  tidyr::pivot_wider(
+    names_from  = dose_ord_norm,
+    values_from = dose_date_str,
+    names_glue  = "Date_{dose_ord_norm}_Dose"
+  )
+
+# Wide: normalized product-code columns
+wide_prods <- long_compact %>%
+  dplyr::select(ID, dose_ord_norm, prod_code) %>%
+  tidyr::pivot_wider(
+    names_from  = dose_ord_norm,
+    values_from = prod_code,
+    names_glue  = "VaccinationProductCode_{dose_ord_norm}_Dose"
+  )
+
+# Replace original columns with normalized ones
+df_aug_resolved <- df_aug_resolved %>%
+  dplyr::select(-dplyr::all_of(dose_cols_str), -dplyr::all_of(prod_cols)) %>%
+  dplyr::left_join(wide_dates, by = "ID") %>%
+  dplyr::left_join(wide_prods, by = "ID")
+
+# Re-derive parsed dose columns and flags from normalized strings
+df_aug_resolved <- df_aug_resolved %>%
+  dplyr::mutate(
+    date_first_dose_parsed   = to_iso_monday_flex(Date_First_Dose),
+    date_second_dose_parsed  = to_iso_monday_flex(Date_Second_Dose),
+    date_third_dose_parsed   = to_iso_monday_flex(Date_Third_Dose),
+    date_fourth_dose_parsed  = to_iso_monday_flex(Date_Fourth_Dose),
+    date_fifth_dose_parsed   = to_iso_monday_flex(Date_Fifth_Dose),
+    date_sixth_dose_parsed   = to_iso_monday_flex(Date_Sixth_Dose),
+    date_seventh_dose_parsed = to_iso_monday_flex(Date_Seventh_Dose),
+    has_first_dose = !is.na(Date_First_Dose) & nzchar(trimws(Date_First_Dose)),
+    has_any_vax = !is.na(date_first_dose_parsed) |
+                  !is.na(date_second_dose_parsed) |
+                  !is.na(date_third_dose_parsed)  |
+                  !is.na(date_fourth_dose_parsed) |
+                  !is.na(date_fifth_dose_parsed)  |
+                  !is.na(date_sixth_dose_parsed)  |
+                  !is.na(date_seventh_dose_parsed)
+  )
+
+# Sanity check: no “later dose while earlier missing”
+later_no_earlier_after <- df_aug_resolved %>%
+  dplyr::mutate(
+    d1 = !is.na(date_first_dose_parsed),
+    d2 = !is.na(date_second_dose_parsed),
+    d3 = !is.na(date_third_dose_parsed),
+    d4 = !is.na(date_fourth_dose_parsed),
+    d5 = !is.na(date_fifth_dose_parsed),
+    d6 = !is.na(date_sixth_dose_parsed),
+    d7 = !is.na(date_seventh_dose_parsed)
+  ) %>%
+  dplyr::filter((d2 & !d1) | (d3 & !d2) | (d4 & !d3) | (d5 & !d4) | (d6 & !d5) | (d7 & !d6))
+cat("After normalization — gaps left: ", nrow(later_no_earlier_after), "\n")
+
+# Optional: write a normalized version of your main output
+write.csv(df_aug_resolved,
+          "data/mzcr_no_or_first_infection_normalized_doses.csv",
+          row.names = FALSE, na = "")
+cat("Wrote: data/mzcr_no_or_first_infection_normalized_doses.csv\n")
+
 # -------------------------------------------------------------------
 # Write the post-filtered augmented data
 # -------------------------------------------------------------------
@@ -548,94 +742,6 @@ recovery_incoh <- df_aug_resolved %>%
             (!is.na(week_date_of_death)      & date_recovered_parsed > week_date_of_death) )
 cat("Recovery date inconsistencies: ", nrow(recovery_incoh), "\n")
 write.csv(recovery_incoh, "data/mzcr_recovery_inconsistencies.csv", row.names = FALSE)
-
-# ================================================================
-# 4) Vaccination chronology anomalies
-#    - Later dose present but earlier dose missing
-#    - Non-monotonic dose dates
-# ================================================================
-dose_cols <- c("date_first_dose_parsed","date_second_dose_parsed","date_third_dose_parsed",
-               "date_fourth_dose_parsed","date_fifth_dose_parsed","date_sixth_dose_parsed",
-               "date_seventh_dose_parsed")
-
-later_no_earlier <- df_aug_resolved %>%
-  mutate(
-    d1 = !is.na(date_first_dose_parsed),
-    d2 = !is.na(date_second_dose_parsed),
-    d3 = !is.na(date_third_dose_parsed),
-    d4 = !is.na(date_fourth_dose_parsed),
-    d5 = !is.na(date_fifth_dose_parsed),
-    d6 = !is.na(date_sixth_dose_parsed),
-    d7 = !is.na(date_seventh_dose_parsed),
-    gap12 = d2 & !d1,
-    gap23 = d3 & !d2,
-    gap34 = d4 & !d3,
-    gap45 = d5 & !d4,
-    gap56 = d6 & !d5,
-    gap67 = d7 & !d6
-  ) %>%
-  filter(gap12 | gap23 | gap34 | gap45 | gap56 | gap67)
-cat("Later dose present while prior missing: ", nrow(later_no_earlier), "\n")
-write.csv(later_no_earlier %>% select(ID, starts_with("Date_")),
-          "data/mzcr_vax_gaps.csv", row.names = FALSE)
-
-# --- Define parsed dose columns (must exist in df_aug_resolved) ---
-dose_parsed_cols <- c(
-  "date_first_dose_parsed","date_second_dose_parsed","date_third_dose_parsed",
-  "date_fourth_dose_parsed","date_fifth_dose_parsed","date_sixth_dose_parsed",
-  "date_seventh_dose_parsed"
-)
-
-# If you haven't already created has_any_vax, do it now (fast + vectorized)
-if (!"has_any_vax" %in% names(df_aug_resolved)) {
-  df_aug_resolved <- df_aug_resolved %>%
-    dplyr::mutate(
-      has_any_vax = Reduce(`|`, lapply(dose_parsed_cols, function(x) !is.na(.data[[x]])))
-    )
-}
-
-# Work only on rows that have any vaccination at all to cut size early
-idx_vax <- which(df_aug_resolved$has_any_vax %in% TRUE)
-if (length(idx_vax)) {
-  # Build numeric matrix of dose dates (Date -> numeric days since epoch)
-  D <- do.call(
-    cbind,
-    lapply(dose_parsed_cols, function(x) as.numeric(df_aug_resolved[[x]][idx_vax]))
-  )
-  # D is (n_vax x 7); NA stays NA
-  
-  # Compute pairwise “inversions”: later dose j earlier than dose i (j > i)
-  combs <- utils::combn(ncol(D), 2)  # all i<j pairs
-  any_bad <- rep(FALSE, nrow(D))
-  bad_cnt <- integer(nrow(D))        # optional: number of inversions per row
-  
-  for (k in seq_len(ncol(combs))) {
-    i <- combs[1, k]; j <- combs[2, k]
-    # Compare only where both dates exist
-    bad <- is.finite(D[, i]) & is.finite(D[, j]) & (D[, j] < D[, i])
-    any_bad <- any_bad | bad
-    bad_cnt <- bad_cnt + bad
-  }
-  
-  non_mono_mask_global <- rep(FALSE, nrow(df_aug_resolved))
-  non_mono_mask_global[idx_vax] <- any_bad
-  
-  non_monotonic_vax <- df_aug_resolved[non_mono_mask_global, , drop = FALSE]
-  non_monotonic_vax$monotonic_inversion_count <- bad_cnt[any_bad]
-  
-  cat("Non-monotonic vaccination date order: ",
-      sum(non_mono_mask_global), "\n", sep = "")
-  
-  # Save a compact view
-  out <- dplyr::select(
-    non_monotonic_vax,
-    ID, dplyr::starts_with("Date_"), monotonic_inversion_count
-  )
-  write.csv(out, "data/mzcr_vax_non_monotonic.csv", row.names = FALSE)
-} else {
-  cat("Non-monotonic vaccination date order: 0\n")
-}
-# ---------------------------------------------------------------------------
 
 
 # ================================================================

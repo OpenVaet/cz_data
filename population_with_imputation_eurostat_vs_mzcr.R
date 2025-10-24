@@ -39,6 +39,7 @@ cat(sprintf("Loaded %d records from imputed file\n", nrow(df)))
 df_alive <- df %>%
   mutate(week_date_of_death = as.Date(week_date_of_death)) %>%
   filter(is.na(week_date_of_death) | week_date_of_death >= as.Date("2024-01-01")) %>%
+  filter(!is.na(year_of_birth_end)) %>%
   mutate(
     # use the same convention as the Perl weights
     min_age = pmax(0L, 2024L - year_of_birth_end - 1L)

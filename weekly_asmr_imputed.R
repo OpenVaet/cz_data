@@ -304,8 +304,8 @@ for (y in names(population_stats$deaths)) {
 }
 
 # Process weekly data
-out_file <- file("outputs/weekly_death_rates.csv", "w")
-out_asmr_file <- file("outputs/weekly_asmr.csv", "w")
+out_file <- file("outputs/weekly_death_rates_with_imputation.csv", "w")
+out_asmr_file <- file("outputs/weekly_asmr_with_imputation.csv", "w")
 
 writeLines("year,week,age_group,esp_pop,total_unvaccinated,total_vaccinated,vaccinated_this_week,deaths_vaccinated,deaths_unvaccinated,rate_per_100000_unvaccinated,rate_per_100000_vaccinated,esp_rate_unvaccinated,esp_rate_vaccinated", out_file)
 writeLines("year,week,asmr_unvaccinated,asmr_vaccinated,asmr_total", out_asmr_file)
