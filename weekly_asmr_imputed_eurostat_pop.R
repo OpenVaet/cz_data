@@ -147,9 +147,6 @@ load_mzcr <- function() {
     age_group <- row$age_group
     year_of_birth_end <- row$year_of_birth_end
     sex <- row$sex
-    if (is.na(year_of_birth_end) | sex == 'U') {
-      next
-    }
     age_at_death <- row$age_at_death
     alive_on_jan_1st_2024 <- 1
     comp_death <- NULL
@@ -306,9 +303,118 @@ for (y in names(population_stats$deaths)) {
   }
 }
 
+
+
+# -------------------------------------------------------------------
+# 3) Eurostat annual population (demo_pjan) — single years -> 5y bands
+# -------------------------------------------------------------------
+pop_file <- "data/demo_pjan_linear_2_0.csv"
+pop_url  <- "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/demo_pjan/1.0?compress=false&format=csvdata&formatVersion=2.0&lang=en&labels=name"
+
+if (!file.exists(pop_file)) {
+  options(timeout = 1200)
+  download.file(pop_url, pop_file, mode = "wb")
+  message("Eurostat yearly population by single ages file downloaded.")
+} else {
+  message("Eurostat yearly population by single ages file found locally.")
+}
+
+pop_raw <- read.csv(pop_file, header = TRUE, stringsAsFactors = FALSE, check.names = FALSE)
+
+pop2 <- pop_raw %>%
+  rename(time = `TIME_PERIOD`, value = `OBS_VALUE`) %>%
+  mutate(geo_code = sub(":.*$", "", geo)) %>%
+  filter(geo_code == "CZ") %>%
+  mutate(value = suppressWarnings(as.numeric(value))) %>%
+  filter(!is.na(value), age != "TOTAL") %>%
+  mutate(
+    year = as.integer(time),
+    age  = suppressWarnings(as.integer(sub("^Y", "", age)))
+  ) %>%
+  filter(!is.na(age), age >= 15) %>%
+  rename(pop = value)
+
+pop_bands <- pop2 %>%
+  mutate(
+    age_start = pmin(floor(age / 5) * 5, 95L),
+    age_end   = if_else(age_start < 95L, age_start + 4L, 999L)
+  ) %>%
+  group_by(year, age_start, age_end) %>%
+  summarise(pop = sum(pop, na.rm = TRUE), .groups = "drop")
+
+# -------------------------------------------------------------------
+# 4) ESP2013 — match FIRST script (90+ OPEN) and 15+
+#     (first script used 85–89 and 90+, with 90+ weight = 1000)
+# -------------------------------------------------------------------
+esp2013_90p <- tibble::tibble(
+  age_start = c(15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90),
+  age_end   = c(19,24,29,34,39,44,49,54,59,64,69,74,79,84,89,999),
+  esp_pop   = c(5500,6000,6000,6500,7000,7000,7000,7000,6500,6000,5500,5000,4000,2500,1500,1000)
+)
+esp_total_90p <- sum(esp2013_90p$esp_pop)
+
+weeks_per_year <- 52.1775  # consistent with Eurostat-method script
+
+# -------------------------------------------------------------------
+# 5) Aggregate Eurostat to 90+ OPEN, compute weekly age-specific rates
+# -------------------------------------------------------------------
+# (a) Collapse Eurostat deaths into 90+ open
+eu_w_90p <- eu_w %>%
+  mutate(
+    age_start_90p = if_else(age_start >= 90, 90L, age_start),
+    age_end_90p   = if_else(age_start >= 90, 999L, age_end)
+  ) %>%
+  group_by(year, week, iso_date, age_start = age_start_90p, age_end = age_end_90p) %>%
+  summarise(deaths = sum(deaths, na.rm = TRUE), .groups = "drop")
+
+# (b) Collapse annual population into 90+ open (matching age bands)
+pop_bands_90p <- pop_bands %>%
+  mutate(
+    age_start_90p = if_else(age_start >= 90, 90L, age_start),
+    age_end_90p   = if_else(age_start >= 90, 999L, age_end)
+  ) %>%
+  group_by(year, age_start = age_start_90p, age_end = age_end_90p) %>%
+  summarise(pop = sum(pop, na.rm = TRUE), .groups = "drop")
+
+# (c) Weekly Eurostat age-specific rates (per 100k, annualised)
+eu_rates_15p_90p <- eu_w_90p %>%
+  left_join(pop_bands_90p, by = c("year", "age_start", "age_end")) %>%
+  group_by(age_start, age_end) %>%
+  tidyr::fill(pop, .direction = "downup") %>%
+  ungroup() %>%
+  mutate(
+    person_weeks  = pop / weeks_per_year,
+    rate_per_100k = if_else(person_weeks > 0, deaths / person_weeks * 1e5, NA_real_)
+  ) %>%
+  filter(!is.na(rate_per_100k)) %>%
+  left_join(esp2013_90p, by = c("age_start", "age_end"))
+
+asmr15_eu_90p <- eu_rates_15p_90p %>%
+  group_by(year, week, iso_date) %>%
+  summarise(
+    asmr_15plus_eurostat_esp90p = sum(rate_per_100k * esp_pop) / esp_total_90p,
+    .groups = "drop"
+  ) %>%
+  arrange(iso_date)
+
+weeks_per_year <- 52.1775
+
+# Build: person_weeks_lookup[[year]][["15-19"]] = pop / 52.1775, etc.
+person_weeks_lookup <- pop_bands_90p %>%
+  dplyr::mutate(
+    age_group = ifelse(age_end == 999L,
+                       sprintf("%d-999", age_start),
+                       sprintf("%d-%d",  age_start, age_end)),
+    person_weeks = pop / weeks_per_year
+  ) %>%
+  dplyr::select(year, age_group, person_weeks) %>%
+  split(.$year) %>%
+  lapply(function(df) setNames(as.list(df$person_weeks), df$age_group))
+
+
 # Process weekly data
-out_file <- file("outputs/weekly_death_rates_with_imputation.csv", "w")
-out_asmr_file <- file("outputs/weekly_asmr_with_imputation.csv", "w")
+out_file <- file("outputs/weekly_death_rates_deaths_with_imputation_eurostat_pop.csv", "w")
+out_asmr_file <- file("outputs/weekly_asmr_deaths_with_imputation_eurostat_pop.csv", "w")
 
 writeLines("year,week,age_group,esp_pop,total_unvaccinated,total_vaccinated,vaccinated_this_week,deaths_vaccinated,deaths_unvaccinated,rate_per_100000_unvaccinated,rate_per_100000_vaccinated,esp_rate_unvaccinated,esp_rate_vaccinated", out_file)
 writeLines("year,week,asmr_unvaccinated,asmr_vaccinated,asmr_total", out_asmr_file)
@@ -323,14 +429,13 @@ while (!is.null(year) && (year < max_year || (year == max_year && week <= max_we
     age_group_data <- esp[i, ]
     age_group <- age_group_data$age_group
     from_age <- as.integer(strsplit(age_group, "-")[[1]][1])
-    
     if (from_age < 15) next
     
     esp_pop <- age_group_data$esp_pop
     total_unvaccinated <- population_baseline[[age_group]]$total_unvaccinated
-    total_vaccinated <- population_baseline[[age_group]]$total_vaccinated
+    total_vaccinated   <- population_baseline[[age_group]]$total_vaccinated
     
-    # Get vaccinations this week
+    # Vaccinations this week
     vaccinated_this_week <- 0
     if (as.character(year) %in% names(population_stats$vaccinated) &&
         as.character(week) %in% names(population_stats$vaccinated[[as.character(year)]]) &&
@@ -338,18 +443,16 @@ while (!is.null(year) && (year < max_year || (year == max_year && week <= max_we
       vaccinated_this_week <- population_stats$vaccinated[[as.character(year)]][[as.character(week)]][[age_group]]
     }
     
-    # Adjust baseline
-    total_vaccinated <- total_vaccinated + vaccinated_this_week
+    # Adjust baseline (for vax/unvax series only)
+    total_vaccinated   <- total_vaccinated + vaccinated_this_week
     total_unvaccinated <- total_unvaccinated - vaccinated_this_week
     
-    # Get deaths
+    # Deaths
     deaths_vaccinated <- 0
     deaths_unvaccinated <- 0
-    
     if (as.character(year) %in% names(population_stats$deaths) &&
         as.character(week) %in% names(population_stats$deaths[[as.character(year)]]) &&
         age_group %in% names(population_stats$deaths[[as.character(year)]][[as.character(week)]])) {
-      
       if ("1" %in% names(population_stats$deaths[[as.character(year)]][[as.character(week)]][[age_group]])) {
         deaths_vaccinated <- population_stats$deaths[[as.character(year)]][[as.character(week)]][[age_group]][["1"]]
       }
@@ -363,86 +466,80 @@ while (!is.null(year) && (year < max_year || (year == max_year && week <= max_we
     population_baseline[[age_group]]$deaths$vaccinated <- 
       population_baseline[[age_group]]$deaths$vaccinated + deaths_vaccinated
     
-    # Calculate rates
+    # ---- Age-specific rates (unvax/vax) — keep as in your original logic ----
     rate_per_100000_unvaccinated <- 0
-    rate_per_100000_vaccinated <- 0
+    rate_per_100000_vaccinated   <- 0
     esp_rate_unvaccinated <- 0
-    esp_rate_vaccinated <- 0
+    esp_rate_vaccinated   <- 0
     
     if (total_unvaccinated > 0) {
-      rate_per_100000_unvaccinated <- deaths_unvaccinated * 100000 * 52.18 / total_unvaccinated
-      esp_rate_unvaccinated <- rate_per_100000_unvaccinated * esp_pop / 100000
+      rate_per_100000_unvaccinated <- round(deaths_unvaccinated * 100000 * 52.18 / total_unvaccinated, 7)
+      esp_rate_unvaccinated <- round(rate_per_100000_unvaccinated * esp_pop / 100000, 7)
     }
-    
     if (total_vaccinated > 0) {
-      rate_per_100000_vaccinated <- deaths_vaccinated * 100000 * 52.18 / total_vaccinated
-      esp_rate_vaccinated <- rate_per_100000_vaccinated * esp_pop / 100000
+      rate_per_100000_vaccinated <- round(deaths_vaccinated * 100000 * 52.18 / total_vaccinated, 7)
+      esp_rate_vaccinated <- round(rate_per_100000_vaccinated * esp_pop / 100000, 7)
     }
     
-    # Combined rate
+    # ---- Combined rate (Eurostat-comparable) ----
+    # Use Eurostat person-weeks denominator for this year & age_group
     rate_per_100000_total <- 0
     esp_rate_total <- 0
-    den_total <- total_unvaccinated + total_vaccinated
+    deaths_total <- deaths_unvaccinated + deaths_vaccinated
     
-    if (den_total > 0) {
-      deaths_total <- deaths_unvaccinated + deaths_vaccinated
-      rate_per_100000_total <- deaths_total * 100000 * 52.18 / den_total
-      esp_rate_total <- rate_per_100000_total * esp_pop / 100000
+    pw <- NA_real_
+    if (!is.null(person_weeks_lookup[[as.character(year)]])) {
+      pw <- person_weeks_lookup[[as.character(year)]][[age_group]]
+      if (is.null(pw)) pw <- NA_real_
+    }
+    
+    if (!is.na(pw) && pw > 0) {
+      # Note: D / (pop/52.1775) * 1e5  ==  D * 1e5 / person_weeks
+      rate_per_100000_total <- round(deaths_total * 100000 / pw, 7)
+      esp_rate_total <- round(rate_per_100000_total * esp_pop / 100000, 7)
     }
     
     weekly_data[[age_group]] <- list(
       esp_rate_unvaccinated = esp_rate_unvaccinated,
-      esp_rate_vaccinated = esp_rate_vaccinated,
-      esp_rate_total = esp_rate_total,
-      esp_pop = esp_pop
+      esp_rate_vaccinated   = esp_rate_vaccinated,
+      esp_rate_total        = esp_rate_total,   # <-- now Eurostat-denominator based
+      esp_pop               = esp_pop
     )
     
-    # Update population
-    total_vaccinated <- total_vaccinated - deaths_vaccinated
+    # Update cohort (for vax/unvax series only)
+    total_vaccinated   <- total_vaccinated - deaths_vaccinated
     total_unvaccinated <- total_unvaccinated - deaths_unvaccinated
     population_baseline[[age_group]]$total_unvaccinated <- total_unvaccinated
-    population_baseline[[age_group]]$total_vaccinated <- total_vaccinated
+    population_baseline[[age_group]]$total_vaccinated   <- total_vaccinated
     
     writeLines(paste(year, week, age_group, esp_pop, total_unvaccinated, total_vaccinated, 
-                    vaccinated_this_week, deaths_vaccinated, deaths_unvaccinated,
-                    rate_per_100000_unvaccinated, rate_per_100000_vaccinated, 
-                    esp_rate_unvaccinated, esp_rate_vaccinated, sep = ","), 
-              out_file)
+                     vaccinated_this_week, deaths_vaccinated, deaths_unvaccinated,
+                     rate_per_100000_unvaccinated, rate_per_100000_vaccinated, 
+                     esp_rate_unvaccinated, esp_rate_vaccinated, sep = ","), 
+               out_file)
   }
   
-  # Calculate weekly ASMR
+  # Weekly ASMR (ESP2013, 90+ open) — total now uses Eurostat denominators
   ags <- names(weekly_data)
   
-  esp_num_unvax <- sum(sapply(ags, function(ag) {
-    if (ag %in% names(weekly_data)) weekly_data[[ag]]$esp_rate_unvaccinated else 0
-  }))
-  
-  esp_num_vax <- sum(sapply(ags, function(ag) {
-    if (ag %in% names(weekly_data)) weekly_data[[ag]]$esp_rate_vaccinated else 0
-  }))
-  
-  esp_num_total <- sum(sapply(ags, function(ag) {
-    if (ag %in% names(weekly_data)) weekly_data[[ag]]$esp_rate_total else 0
-  }))
-  
-  esp_den_scaled <- sum(sapply(ags, function(ag) {
-    if (ag %in% names(weekly_data)) weekly_data[[ag]]$esp_pop else 0
-  })) / 100000
+  esp_num_unvax <- sum(sapply(ags, function(ag) weekly_data[[ag]]$esp_rate_unvaccinated))
+  esp_num_vax   <- sum(sapply(ags, function(ag) weekly_data[[ag]]$esp_rate_vaccinated))
+  esp_num_total <- sum(sapply(ags, function(ag) weekly_data[[ag]]$esp_rate_total))   # <-- Eurostat denom
+  esp_den_scaled <- sum(sapply(ags, function(ag) weekly_data[[ag]]$esp_pop)) / 100000
   
   asmr_unvaccinated <- 0
-  asmr_vaccinated <- 0
-  asmr_total <- 0
+  asmr_vaccinated   <- 0
+  asmr_total        <- 0
   
   if (esp_den_scaled > 0) {
     asmr_unvaccinated <- round(esp_num_unvax / esp_den_scaled, 7)
-    asmr_vaccinated <- round(esp_num_vax / esp_den_scaled, 7)
-    asmr_total <- round(esp_num_total / esp_den_scaled, 7)
+    asmr_vaccinated   <- round(esp_num_vax   / esp_den_scaled, 7)
+    asmr_total        <- round(esp_num_total / esp_den_scaled, 7)   # <-- Eurostat-comparable
   }
   
   writeLines(paste(year, week, asmr_unvaccinated, asmr_vaccinated, asmr_total, sep = ","), 
-            out_asmr_file)
+             out_asmr_file)
   
-  # Advance week
   next_vals <- next_week(year, week)
   year <- next_vals[1]
   week <- next_vals[2]
@@ -459,7 +556,7 @@ cmp %>%
   summarise(median_ratio = median(ratio, na.rm = TRUE),
             iqr = IQR(ratio, na.rm = TRUE))
 
-den <- readr::read_csv("outputs/weekly_death_rates_with_imputation.csv", show_col_types = FALSE) %>%
+den <- readr::read_csv("outputs/weekly_death_rates_deaths_with_imputation_eurostat_pop.csv", show_col_types = FALSE) %>%
   dplyr::mutate(
     age_start = as.integer(sub("-.*$", "", age_group)),
     age_end   = ifelse(grepl("999$", age_group), 999L, as.integer(sub("^.*-", "", age_group))),
