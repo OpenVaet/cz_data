@@ -453,29 +453,3 @@ close(out_asmr_file)
 
 # Print final population baseline
 print(population_baseline)
-
-cmp %>%
-  mutate(ratio = asmr_15plus_eurostat_esp90p / asmr_15plus_first) %>%
-  summarise(median_ratio = median(ratio, na.rm = TRUE),
-            iqr = IQR(ratio, na.rm = TRUE))
-
-den <- readr::read_csv("outputs/weekly_death_rates_with_imputation.csv", show_col_types = FALSE) %>%
-  dplyr::mutate(
-    age_start = as.integer(sub("-.*$", "", age_group)),
-    age_end   = ifelse(grepl("999$", age_group), 999L, as.integer(sub("^.*-", "", age_group))),
-    N         = total_unvaccinated + total_vaccinated
-  ) %>%
-  dplyr::filter(age_start >= 15)
-
-# Collapse Eurostat population to 90+ open as in your compare script -> pop_bands_90p (year, age_start, age_end, pop)
-
-coverage <- den %>%
-  dplyr::group_by(year, week, age_start, age_end) %>%
-  dplyr::summarise(N = dplyr::first(N), .groups = "drop") %>%   # N used in that week
-  dplyr::left_join(pop_bands_90p, by = c("year", "age_start", "age_end")) %>%
-  dplyr::mutate(coverage = N / pop)
-
-coverage %>%
-  dplyr::group_by(age_start, age_end) %>%
-  dplyr::summarise(med_cov = median(coverage, na.rm = TRUE))
-
