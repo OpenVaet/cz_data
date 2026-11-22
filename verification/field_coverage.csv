@@ -1,0 +1,19 @@
+release,field,precision,observed_from,observed_to,recorded,invalid
+march,DatumUmrti,day,2020-01-01,2022-12-31,389398,0
+march,Datum_1,day,2020-12-27,2024-03-13,6982138,0
+march,Datum_2,day,2020-12-29,2024-03-13,6483924,0
+march,Datum_3,day,2021-01-27,2024-03-13,4377732,0
+march,Datum_4,day,2021-01-28,2024-03-13,911061,0
+march,Datum_5,day,2021-10-11,2024-03-13,290282,0
+march,Datum_6,day,2021-12-05,2024-03-13,1797,0
+march,Datum_7,day,2022-08-12,2024-03-01,49,0
+november,DatumPozitivity_all_rows,week starting Monday,2020-02-24,2024-10-07,4797405,0
+november,DatumUmrtiLPZ,week starting Monday,2020-03-02,2024-10-07,556076,0
+november,Umrti,week starting Monday,2020-03-16,2024-10-07,43548,0
+november,Datum_Prvni_davka,week starting Monday,2020-12-21,2024-10-07,6982399,0
+november,Datum_Druha_davka,week starting Monday,2020-12-28,2024-10-07,6483662,0
+november,Datum_Treti_davka,week starting Monday,2021-01-25,2024-10-07,4378914,0
+november,Datum_Ctvrta_davka,week starting Monday,2021-01-25,2024-10-07,921236,0
+november,Datum_Pata_davka,week starting Monday,2021-10-11,2024-10-07,311188,0
+november,Datum_Sesta_davka,week starting Monday,2021-11-29,2024-10-07,51556,0
+november,Datum_Sedma_davka,week starting Monday,2022-08-08,2024-10-07,769,0
