@@ -87,6 +87,8 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
   sys.source(file.path(src,"age_panel.R"),envir=environment())
   sys.source(file.path(src,"guide.R"),envir=environment())
   tables <- publication_tables(read_result,src)
+  all_limits <- rbind(tables$T03$limits,tables$T05$limits)
+  write.csv(all_limits,file.path(stage,"T03_T05_rate_intervals.csv"),row.names=FALSE)
   for (id in names(tables)) draw_table(outfile(id),id,title_for(id),tables[[id]])
   # Add an identifying strip outside the supplied image. Use native raster
   # pixels at their original resolution; the plot area is never cropped.
