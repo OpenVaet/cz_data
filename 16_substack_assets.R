@@ -59,7 +59,7 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
   read_result <- function(step,name) csv(source_file(step,name))
   inputs <- do.call(rbind,provenance)
   support <- c("placements.csv","required_outputs.csv","csu_g02_u07.csv","csu_g02_sources.csv","age_panel.R","tables.R","guide.R")
-  hashes <- vapply(c(file.path(src,support),file.path(root,"16_substack_assets.R")),hash,"")
+  hashes <- vapply(c(file.path(src,support),file.path(root,c("16_substack_assets.R","17_november_linkage_adjusted_asmr.R"))),hash,"")
   base <- file.path(root,"publication")
   dir.create(base,recursive=TRUE,showWarnings=FALSE)
   stage <- tempfile(".building-",tmpdir=base)
@@ -113,7 +113,7 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
   charts <- requirements[endsWith(requirements$file,".png"),]
   for (j in seq_len(nrow(charts))) {
     name <- charts$file[j]; step <- charts$step[j]
-    id <- if(step==10) "V19" else if(step==12) "S01" else if(step==13)
+    id <- if(step==10) "V20" else if(step==12) "S01" else if(step==13)
       (if(startsWith(name,"march")) "S02" else "S03") else substr(name,1,3)
     frame(id,source_file(step,name))
   }
@@ -158,8 +158,14 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
     }
     frame(sprintf("V%02d",j+12L),panels); unlink(panels)
   }
+  # Step 17 renders the numbered ASMR figure and its age-group supplements.
+  step17_env <- new.env(parent=environment())
+  sys.source(file.path(root,"17_november_linkage_adjusted_asmr.R"),envir=step17_env)
+  rate_dir <- step17_env$build_linkage_asmr(root,source_dirs[["12"]],source_dirs[["15"]])
+  extra <- placements$file[placements$source=="17"]
+  stopifnot(length(extra)==7L,all(file.copy(file.path(rate_dir,extra),file.path(stage,"png"))))
   stopifnot(identical(sort(list.files(file.path(stage,"png"))),sort(placements$file)))
-  write_guide(stage,placements,tables)
+  write_guide(stage,placements,tables,rate_dir)
   files <- list.files(stage,recursive=TRUE)
   write.csv(data.frame(file=files,sha256=unname(vapply(file.path(stage,files),hash,""))),file.path(stage,"outputs.csv"),row.names=FALSE)
   if (!file.rename(stage,dest) && !dir.exists(dest)) stop("Cannot commit publication export to ",dest)
