@@ -3,6 +3,20 @@
 # Produces Figure V19 (ages 15+) and Supplements S05–S10 (the six article age groups).
 # The inputs are the November/Eurostat cells used for S01 and the Step 15
 # full-study sensitivity run. Set CZ_STEP12_DIR and CZ_STEP15_DIR to pin runs.
+# Used by both the publication exporter and the standalone V19 figure.
+draw_publication_header <- function(id, title, width_px) {
+  dpi <- width_px / grDevices::dev.size("in")[1]
+  bar_px <- round(width_px * .041)
+  bar <- grid::unit(bar_px / dpi, "inches")
+  top <- grid::unit(1, "npc")
+  label <- paste(if (startsWith(id, "S")) "Supplement" else "Figure", id)
+  grid::grid.rect(x=0, y=top, width=1, height=bar, just=c("left", "top"),
+                  gp=grid::gpar(fill="#183B49", col=NA))
+  grid::grid.text(paste(label, title, sep="    |    "), x=.025, y=top-bar/2, just="left",
+                  gp=grid::gpar(col="white", fontfamily="sans", fontface="bold",
+                                fontsize=bar_px * .44 * 72 / dpi))
+}
+
 build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
                                step12_dir=NULL, step15_dir=NULL) {
   root <- normalizePath(root,mustWork=TRUE)
@@ -54,7 +68,8 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
   stage <- tempfile(".build-",tmpdir=base); stopifnot(dir.create(stage))
   on.exit(unlink(stage,recursive=TRUE),add=TRUE)
   signature <- file.path(stage,"signature")
-  writeLines(c(deparse(body(build_linkage_asmr),width.cutoff=120L),inputs$sha256),signature,useBytes=TRUE)
+  writeLines(c(deparse(body(build_linkage_asmr),width.cutoff=120L),
+               deparse(body(draw_publication_header),width.cutoff=120L),inputs$sha256),signature,useBytes=TRUE)
   dest <- file.path(base,substr(sha(signature),1,20)); unlink(signature)
   groups <- c("15+","15-24","25-49","50-59","60-69","70-79","80+")
   figure_ids <- c("V19",sprintf("S%02d",5:10))
@@ -166,11 +181,13 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
     par(family="sans",xaxs="i",yaxs="i",fg=ink,col.axis=muted,lend="round")
     blank <- function() {par(mar=rep(0,4)); plot.new(); plot.window(c(0,1),c(0,1))}
     blank()
-    kind <- if (k==1L) "FIGURE" else "SUPPLEMENT"
-    text(.025,.86,paste0(kind," ",figure_ids[k],"     /     CZECHIA"),adj=0,col=muted,font=2,cex=.95)
-    text(.025,.57,paste0("Weekly age-standardized mortality at ages ",g),adj=0,col=ink,font=2,cex=1.90)
-    text(.025,.33,"November NZIP and Eurostat residents   ·   Deaths per 100,000 person-years   ·   ESP 2013",adj=0,col=muted,cex=1.05)
-    legend(.02,.22,c("No recorded dose","At least one dose","All residents"),col=cols,lty=c(1,1,2),
+    plot_title <- paste0("Weekly age-standardized mortality at ages ",g)
+    if (k!=1L) {
+      text(.025,.86,paste0("SUPPLEMENT ",figure_ids[k],"     /     CZECHIA"),adj=0,col=muted,font=2,cex=.95)
+      text(.025,.57,plot_title,adj=0,col=ink,font=2,cex=1.90)
+    }
+    text(.025,if(k==1L) .51 else .33,"November NZIP and Eurostat residents   ·   Deaths per 100,000 person-years   ·   ESP 2013",adj=0,col=muted,cex=1.05)
+    legend(.02,if(k==1L) .33 else .22,c("No recorded dose","At least one dose","All residents"),col=cols,lty=c(1,1,2),
            lwd=c(2,2,1.6),horiz=TRUE,bty="n",x.intersp=.6,y.intersp=.75,cex=1.02,text.col=ink)
     for (j in 1:2) {
       par(mar=c(.65,5.3,2.05,1.25))
@@ -196,6 +213,7 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
     text(.025,.42,"Each transfer preserves resident deaths and person-time. A gap denotes an age stratum with no exposure.",adj=0,cex=.91,col=muted)
     if(any(z$original_no_dose_asmr<0,na.rm=TRUE))
       text(.025,.14,"Negative original estimates arise when recorded vaccinated deaths exceed the resident count used in subtraction.",adj=0,cex=.85,col=muted)
+    if (k==1L) draw_publication_header(figure_ids[k],plot_title,grDevices::dev.size("px")[1])
   }
   for(k in seq_along(groups)) draw(k)
   files <- c(names_png,names_csv)

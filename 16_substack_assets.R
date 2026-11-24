@@ -90,6 +90,8 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
   all_limits <- rbind(tables$T03$limits,tables$T05$limits)
   write.csv(all_limits,file.path(stage,"T03_T05_rate_intervals.csv"),row.names=FALSE)
   for (id in names(tables)) draw_table(outfile(id),id,title_for(id),tables[[id]])
+  step17_env <- new.env(parent=environment())
+  sys.source(file.path(root,"17_november_linkage_adjusted_asmr.R"),envir=step17_env)
   # Add an identifying strip outside the supplied image. Use native raster
   # pixels at their original resolution; the plot area is never cropped.
   frame <- function(id,files) {
@@ -99,12 +101,9 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
     w <- widths[1]; bar <- round(w*.041); h <- sum(heights)+bar
     png(outfile(id),width=w,height=h,bg="white")
     on.exit(dev.off())
+    step17_env$draw_publication_header(id,title_for(id),w)
     grid::pushViewport(grid::viewport(xscale=c(0,w),yscale=c(0,h)))
     at <- function(x) grid::unit(x,"native")
-    grid::grid.rect(x=at(0),y=at(h),width=at(w),height=at(bar),just=c("left","top"),gp=grid::gpar(fill="#183B49",col=NA))
-    label <- paste(if(startsWith(id,"S")) "Supplement" else "Figure",id)
-    grid::grid.text(paste(label,title_for(id),sep="    |    "),x=at(.025*w),y=at(h-bar/2),just="left",
-                    gp=grid::gpar(col="white",fontfamily="sans",fontface="bold",fontsize=bar*.44))
     top <- h-bar
     for (j in seq_along(images)) {
       grid::grid.raster(images[[j]],x=at(0),y=at(top),width=at(w),height=at(heights[j]),just=c("left","top"),interpolate=FALSE)
@@ -161,8 +160,6 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
     frame(sprintf("V%02d",j+12L),panels); unlink(panels)
   }
   # Step 17 renders the numbered ASMR figure and its age-group supplements.
-  step17_env <- new.env(parent=environment())
-  sys.source(file.path(root,"17_november_linkage_adjusted_asmr.R"),envir=step17_env)
   rate_dir <- step17_env$build_linkage_asmr(root,source_dirs[["12"]],source_dirs[["15"]])
   extra <- placements$file[placements$source=="17"]
   stopifnot(length(extra)==7L,all(file.copy(file.path(rate_dir,extra),file.path(stage,"png"))))
