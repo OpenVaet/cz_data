@@ -1,0 +1,1206 @@
+week_start,week,status,deaths,missing_birth_deaths,missing_sex_deaths,missing_birth_pct
+2020-03-02,2020-W10,"Dose recorded, first date unavailable",0,0,0,
+2020-03-02,2020-W10,First dose after death week,5,0,0,0
+2020-03-02,2020-W10,First dose before death week,0,0,0,
+2020-03-02,2020-W10,First dose in death week,0,0,0,
+2020-03-02,2020-W10,No recorded dose,2272,1476,1476,64.9647887323944
+2020-03-09,2020-W11,"Dose recorded, first date unavailable",0,0,0,
+2020-03-09,2020-W11,First dose after death week,4,0,0,0
+2020-03-09,2020-W11,First dose before death week,0,0,0,
+2020-03-09,2020-W11,First dose in death week,0,0,0,
+2020-03-09,2020-W11,No recorded dose,2285,1511,1511,66.1269146608315
+2020-03-16,2020-W12,"Dose recorded, first date unavailable",0,0,0,
+2020-03-16,2020-W12,First dose after death week,0,0,0,
+2020-03-16,2020-W12,First dose before death week,0,0,0,
+2020-03-16,2020-W12,First dose in death week,0,0,0,
+2020-03-16,2020-W12,No recorded dose,2317,1539,1537,66.4220975399223
+2020-03-23,2020-W13,"Dose recorded, first date unavailable",0,0,0,
+2020-03-23,2020-W13,First dose after death week,2,0,0,0
+2020-03-23,2020-W13,First dose before death week,0,0,0,
+2020-03-23,2020-W13,First dose in death week,0,0,0,
+2020-03-23,2020-W13,No recorded dose,2288,1396,1396,61.013986013986
+2020-03-30,2020-W14,"Dose recorded, first date unavailable",0,0,0,
+2020-03-30,2020-W14,First dose after death week,2,0,0,0
+2020-03-30,2020-W14,First dose before death week,0,0,0,
+2020-03-30,2020-W14,First dose in death week,0,0,0,
+2020-03-30,2020-W14,No recorded dose,2320,1250,1250,53.8793103448276
+2020-04-06,2020-W15,"Dose recorded, first date unavailable",0,0,0,
+2020-04-06,2020-W15,First dose after death week,4,0,0,0
+2020-04-06,2020-W15,First dose before death week,0,0,0,
+2020-04-06,2020-W15,First dose in death week,0,0,0,
+2020-04-06,2020-W15,No recorded dose,2241,1114,1114,49.7099509147702
+2020-04-13,2020-W16,"Dose recorded, first date unavailable",0,0,0,
+2020-04-13,2020-W16,First dose after death week,2,0,0,0
+2020-04-13,2020-W16,First dose before death week,0,0,0,
+2020-04-13,2020-W16,First dose in death week,0,0,0,
+2020-04-13,2020-W16,No recorded dose,2113,1014,1014,47.9886417415996
+2020-04-20,2020-W17,"Dose recorded, first date unavailable",0,0,0,
+2020-04-20,2020-W17,First dose after death week,3,0,0,0
+2020-04-20,2020-W17,First dose before death week,0,0,0,
+2020-04-20,2020-W17,First dose in death week,0,0,0,
+2020-04-20,2020-W17,No recorded dose,2034,883,883,43.4119960668633
+2020-04-27,2020-W18,"Dose recorded, first date unavailable",0,0,0,
+2020-04-27,2020-W18,First dose after death week,1,0,0,0
+2020-04-27,2020-W18,First dose before death week,0,0,0,
+2020-04-27,2020-W18,First dose in death week,0,0,0,
+2020-04-27,2020-W18,No recorded dose,2106,859,859,40.7882241215575
+2020-05-04,2020-W19,"Dose recorded, first date unavailable",0,0,0,
+2020-05-04,2020-W19,First dose after death week,2,0,0,0
+2020-05-04,2020-W19,First dose before death week,0,0,0,
+2020-05-04,2020-W19,First dose in death week,0,0,0,
+2020-05-04,2020-W19,No recorded dose,1998,777,777,38.8888888888889
+2020-05-11,2020-W20,"Dose recorded, first date unavailable",0,0,0,
+2020-05-11,2020-W20,First dose after death week,2,0,0,0
+2020-05-11,2020-W20,First dose before death week,0,0,0,
+2020-05-11,2020-W20,First dose in death week,0,0,0,
+2020-05-11,2020-W20,No recorded dose,2021,772,772,38.1989114299852
+2020-05-18,2020-W21,"Dose recorded, first date unavailable",0,0,0,
+2020-05-18,2020-W21,First dose after death week,6,0,0,0
+2020-05-18,2020-W21,First dose before death week,0,0,0,
+2020-05-18,2020-W21,First dose in death week,0,0,0,
+2020-05-18,2020-W21,No recorded dose,1909,753,751,39.4447354635935
+2020-05-25,2020-W22,"Dose recorded, first date unavailable",0,0,0,
+2020-05-25,2020-W22,First dose after death week,2,0,0,0
+2020-05-25,2020-W22,First dose before death week,0,0,0,
+2020-05-25,2020-W22,First dose in death week,0,0,0,
+2020-05-25,2020-W22,No recorded dose,1926,742,742,38.5254413291797
+2020-06-01,2020-W23,"Dose recorded, first date unavailable",0,0,0,
+2020-06-01,2020-W23,First dose after death week,1,0,0,0
+2020-06-01,2020-W23,First dose before death week,0,0,0,
+2020-06-01,2020-W23,First dose in death week,0,0,0,
+2020-06-01,2020-W23,No recorded dose,2132,838,837,39.3058161350844
+2020-06-08,2020-W24,"Dose recorded, first date unavailable",0,0,0,
+2020-06-08,2020-W24,First dose after death week,4,0,0,0
+2020-06-08,2020-W24,First dose before death week,0,0,0,
+2020-06-08,2020-W24,First dose in death week,0,0,0,
+2020-06-08,2020-W24,No recorded dose,1985,824,824,41.5113350125945
+2020-06-15,2020-W25,"Dose recorded, first date unavailable",0,0,0,
+2020-06-15,2020-W25,First dose after death week,3,0,0,0
+2020-06-15,2020-W25,First dose before death week,0,0,0,
+2020-06-15,2020-W25,First dose in death week,0,0,0,
+2020-06-15,2020-W25,No recorded dose,2012,822,822,40.8548707753479
+2020-06-22,2020-W26,"Dose recorded, first date unavailable",0,0,0,
+2020-06-22,2020-W26,First dose after death week,2,0,0,0
+2020-06-22,2020-W26,First dose before death week,0,0,0,
+2020-06-22,2020-W26,First dose in death week,0,0,0,
+2020-06-22,2020-W26,No recorded dose,2069,826,826,39.9226679555341
+2020-06-29,2020-W27,"Dose recorded, first date unavailable",0,0,0,
+2020-06-29,2020-W27,First dose after death week,4,0,0,0
+2020-06-29,2020-W27,First dose before death week,0,0,0,
+2020-06-29,2020-W27,First dose in death week,0,0,0,
+2020-06-29,2020-W27,No recorded dose,2102,897,897,42.6736441484301
+2020-07-06,2020-W28,"Dose recorded, first date unavailable",0,0,0,
+2020-07-06,2020-W28,First dose after death week,1,0,0,0
+2020-07-06,2020-W28,First dose before death week,0,0,0,
+2020-07-06,2020-W28,First dose in death week,0,0,0,
+2020-07-06,2020-W28,No recorded dose,1983,854,854,43.066061522945
+2020-07-13,2020-W29,"Dose recorded, first date unavailable",0,0,0,
+2020-07-13,2020-W29,First dose after death week,2,0,0,0
+2020-07-13,2020-W29,First dose before death week,0,0,0,
+2020-07-13,2020-W29,First dose in death week,0,0,0,
+2020-07-13,2020-W29,No recorded dose,1978,875,875,44.2366026289181
+2020-07-20,2020-W30,"Dose recorded, first date unavailable",0,0,0,
+2020-07-20,2020-W30,First dose after death week,4,0,0,0
+2020-07-20,2020-W30,First dose before death week,0,0,0,
+2020-07-20,2020-W30,First dose in death week,0,0,0,
+2020-07-20,2020-W30,No recorded dose,2098,876,876,41.7540514775977
+2020-07-27,2020-W31,"Dose recorded, first date unavailable",0,0,0,
+2020-07-27,2020-W31,First dose after death week,6,0,0,0
+2020-07-27,2020-W31,First dose before death week,0,0,0,
+2020-07-27,2020-W31,First dose in death week,0,0,0,
+2020-07-27,2020-W31,No recorded dose,2200,889,889,40.4090909090909
+2020-08-03,2020-W32,"Dose recorded, first date unavailable",0,0,0,
+2020-08-03,2020-W32,First dose after death week,4,0,0,0
+2020-08-03,2020-W32,First dose before death week,0,0,0,
+2020-08-03,2020-W32,First dose in death week,0,0,0,
+2020-08-03,2020-W32,No recorded dose,2149,886,886,41.2284783620289
+2020-08-10,2020-W33,"Dose recorded, first date unavailable",0,0,0,
+2020-08-10,2020-W33,First dose after death week,4,0,0,0
+2020-08-10,2020-W33,First dose before death week,0,0,0,
+2020-08-10,2020-W33,First dose in death week,0,0,0,
+2020-08-10,2020-W33,No recorded dose,2183,899,899,41.1818598259276
+2020-08-17,2020-W34,"Dose recorded, first date unavailable",0,0,0,
+2020-08-17,2020-W34,First dose after death week,3,0,0,0
+2020-08-17,2020-W34,First dose before death week,0,0,0,
+2020-08-17,2020-W34,First dose in death week,0,0,0,
+2020-08-17,2020-W34,No recorded dose,2091,858,858,41.0329985652798
+2020-08-24,2020-W35,"Dose recorded, first date unavailable",0,0,0,
+2020-08-24,2020-W35,First dose after death week,5,0,0,0
+2020-08-24,2020-W35,First dose before death week,0,0,0,
+2020-08-24,2020-W35,First dose in death week,0,0,0,
+2020-08-24,2020-W35,No recorded dose,2016,838,838,41.5674603174603
+2020-08-31,2020-W36,"Dose recorded, first date unavailable",0,0,0,
+2020-08-31,2020-W36,First dose after death week,4,0,0,0
+2020-08-31,2020-W36,First dose before death week,0,0,0,
+2020-08-31,2020-W36,First dose in death week,0,0,0,
+2020-08-31,2020-W36,No recorded dose,2016,839,839,41.6170634920635
+2020-09-07,2020-W37,"Dose recorded, first date unavailable",0,0,0,
+2020-09-07,2020-W37,First dose after death week,1,0,0,0
+2020-09-07,2020-W37,First dose before death week,0,0,0,
+2020-09-07,2020-W37,First dose in death week,0,0,0,
+2020-09-07,2020-W37,No recorded dose,2070,815,815,39.3719806763285
+2020-09-14,2020-W38,"Dose recorded, first date unavailable",0,0,0,
+2020-09-14,2020-W38,First dose after death week,5,0,0,0
+2020-09-14,2020-W38,First dose before death week,0,0,0,
+2020-09-14,2020-W38,First dose in death week,0,0,0,
+2020-09-14,2020-W38,No recorded dose,2195,855,855,38.9521640091116
+2020-09-21,2020-W39,"Dose recorded, first date unavailable",0,0,0,
+2020-09-21,2020-W39,First dose after death week,3,0,0,0
+2020-09-21,2020-W39,First dose before death week,0,0,0,
+2020-09-21,2020-W39,First dose in death week,0,0,0,
+2020-09-21,2020-W39,No recorded dose,2386,902,901,37.8038558256496
+2020-09-28,2020-W40,"Dose recorded, first date unavailable",0,0,0,
+2020-09-28,2020-W40,First dose after death week,6,0,0,0
+2020-09-28,2020-W40,First dose before death week,0,0,0,
+2020-09-28,2020-W40,First dose in death week,0,0,0,
+2020-09-28,2020-W40,No recorded dose,2371,816,815,34.4158582876423
+2020-10-05,2020-W41,"Dose recorded, first date unavailable",0,0,0,
+2020-10-05,2020-W41,First dose after death week,8,0,0,0
+2020-10-05,2020-W41,First dose before death week,0,0,0,
+2020-10-05,2020-W41,First dose in death week,0,0,0,
+2020-10-05,2020-W41,No recorded dose,2589,797,797,30.7840865198919
+2020-10-12,2020-W42,"Dose recorded, first date unavailable",0,0,0,
+2020-10-12,2020-W42,First dose after death week,4,0,0,0
+2020-10-12,2020-W42,First dose before death week,0,0,0,
+2020-10-12,2020-W42,First dose in death week,0,0,0,
+2020-10-12,2020-W42,No recorded dose,2932,833,833,28.4106412005457
+2020-10-19,2020-W43,"Dose recorded, first date unavailable",0,0,0,
+2020-10-19,2020-W43,First dose after death week,4,0,0,0
+2020-10-19,2020-W43,First dose before death week,0,0,0,
+2020-10-19,2020-W43,First dose in death week,0,0,0,
+2020-10-19,2020-W43,No recorded dose,3641,869,868,23.8670694864048
+2020-10-26,2020-W44,"Dose recorded, first date unavailable",0,0,0,
+2020-10-26,2020-W44,First dose after death week,11,0,0,0
+2020-10-26,2020-W44,First dose before death week,0,0,0,
+2020-10-26,2020-W44,First dose in death week,0,0,0,
+2020-10-26,2020-W44,No recorded dose,4200,749,749,17.8333333333333
+2020-11-02,2020-W45,"Dose recorded, first date unavailable",0,0,0,
+2020-11-02,2020-W45,First dose after death week,8,0,0,0
+2020-11-02,2020-W45,First dose before death week,0,0,0,
+2020-11-02,2020-W45,First dose in death week,0,0,0,
+2020-11-02,2020-W45,No recorded dose,4238,713,712,16.8239735724398
+2020-11-09,2020-W46,"Dose recorded, first date unavailable",0,0,0,
+2020-11-09,2020-W46,First dose after death week,6,0,0,0
+2020-11-09,2020-W46,First dose before death week,0,0,0,
+2020-11-09,2020-W46,First dose in death week,0,0,0,
+2020-11-09,2020-W46,No recorded dose,3853,639,639,16.5844796262653
+2020-11-16,2020-W47,"Dose recorded, first date unavailable",0,0,0,
+2020-11-16,2020-W47,First dose after death week,7,0,0,0
+2020-11-16,2020-W47,First dose before death week,0,0,0,
+2020-11-16,2020-W47,First dose in death week,0,0,0,
+2020-11-16,2020-W47,No recorded dose,3399,535,534,15.7399235069138
+2020-11-23,2020-W48,"Dose recorded, first date unavailable",0,0,0,
+2020-11-23,2020-W48,First dose after death week,4,0,0,0
+2020-11-23,2020-W48,First dose before death week,0,0,0,
+2020-11-23,2020-W48,First dose in death week,0,0,0,
+2020-11-23,2020-W48,No recorded dose,3147,480,480,15.2526215443279
+2020-11-30,2020-W49,"Dose recorded, first date unavailable",0,0,0,
+2020-11-30,2020-W49,First dose after death week,3,0,0,0
+2020-11-30,2020-W49,First dose before death week,0,0,0,
+2020-11-30,2020-W49,First dose in death week,0,0,0,
+2020-11-30,2020-W49,No recorded dose,3084,469,469,15.2075226977951
+2020-12-07,2020-W50,"Dose recorded, first date unavailable",0,0,0,
+2020-12-07,2020-W50,First dose after death week,5,0,0,0
+2020-12-07,2020-W50,First dose before death week,0,0,0,
+2020-12-07,2020-W50,First dose in death week,0,0,0,
+2020-12-07,2020-W50,No recorded dose,3083,430,429,13.9474537787869
+2020-12-14,2020-W51,"Dose recorded, first date unavailable",0,0,0,
+2020-12-14,2020-W51,First dose after death week,4,0,0,0
+2020-12-14,2020-W51,First dose before death week,0,0,0,
+2020-12-14,2020-W51,First dose in death week,0,0,0,
+2020-12-14,2020-W51,No recorded dose,3236,473,472,14.6168108776267
+2020-12-21,2020-W52,"Dose recorded, first date unavailable",0,0,0,
+2020-12-21,2020-W52,First dose after death week,7,0,0,0
+2020-12-21,2020-W52,First dose before death week,0,0,0,
+2020-12-21,2020-W52,First dose in death week,0,0,0,
+2020-12-21,2020-W52,No recorded dose,3215,474,471,14.7433903576983
+2020-12-28,2020-W53,"Dose recorded, first date unavailable",0,0,0,
+2020-12-28,2020-W53,First dose after death week,8,0,0,0
+2020-12-28,2020-W53,First dose before death week,1,0,0,0
+2020-12-28,2020-W53,First dose in death week,0,0,0,
+2020-12-28,2020-W53,No recorded dose,3517,515,514,14.6431617856127
+2021-01-04,2021-W01,"Dose recorded, first date unavailable",0,0,0,
+2021-01-04,2021-W01,First dose after death week,3,0,0,0
+2021-01-04,2021-W01,First dose before death week,10,0,0,0
+2021-01-04,2021-W01,First dose in death week,3,0,0,0
+2021-01-04,2021-W01,No recorded dose,3827,468,466,12.2288999216096
+2021-01-11,2021-W02,"Dose recorded, first date unavailable",0,0,0,
+2021-01-11,2021-W02,First dose after death week,0,0,0,
+2021-01-11,2021-W02,First dose before death week,13,0,0,0
+2021-01-11,2021-W02,First dose in death week,24,0,0,0
+2021-01-11,2021-W02,No recorded dose,3696,436,435,11.7965367965368
+2021-01-18,2021-W03,"Dose recorded, first date unavailable",0,0,0,
+2021-01-18,2021-W03,First dose after death week,5,0,0,0
+2021-01-18,2021-W03,First dose before death week,83,0,0,0
+2021-01-18,2021-W03,First dose in death week,17,0,0,0
+2021-01-18,2021-W03,No recorded dose,3499,481,480,13.7467847956559
+2021-01-25,2021-W04,"Dose recorded, first date unavailable",0,0,0,
+2021-01-25,2021-W04,First dose after death week,3,0,0,0
+2021-01-25,2021-W04,First dose before death week,171,0,0,0
+2021-01-25,2021-W04,First dose in death week,14,0,0,0
+2021-01-25,2021-W04,No recorded dose,3240,488,488,15.0617283950617
+2021-02-01,2021-W05,"Dose recorded, first date unavailable",0,0,0,
+2021-02-01,2021-W05,First dose after death week,7,0,0,0
+2021-02-01,2021-W05,First dose before death week,203,0,0,0
+2021-02-01,2021-W05,First dose in death week,6,0,0,0
+2021-02-01,2021-W05,No recorded dose,3059,406,404,13.2723112128146
+2021-02-08,2021-W06,"Dose recorded, first date unavailable",0,0,0,
+2021-02-08,2021-W06,First dose after death week,8,0,0,0
+2021-02-08,2021-W06,First dose before death week,289,0,0,0
+2021-02-08,2021-W06,First dose in death week,7,0,0,0
+2021-02-08,2021-W06,No recorded dose,3143,451,449,14.3493477569201
+2021-02-15,2021-W07,"Dose recorded, first date unavailable",0,0,0,
+2021-02-15,2021-W07,First dose after death week,7,0,0,0
+2021-02-15,2021-W07,First dose before death week,280,0,0,0
+2021-02-15,2021-W07,First dose in death week,12,0,0,0
+2021-02-15,2021-W07,No recorded dose,3190,385,385,12.0689655172414
+2021-02-22,2021-W08,"Dose recorded, first date unavailable",0,0,0,
+2021-02-22,2021-W08,First dose after death week,5,0,0,0
+2021-02-22,2021-W08,First dose before death week,338,0,0,0
+2021-02-22,2021-W08,First dose in death week,19,0,0,0
+2021-02-22,2021-W08,No recorded dose,3294,359,358,10.8986035215543
+2021-03-01,2021-W09,"Dose recorded, first date unavailable",0,0,0,
+2021-03-01,2021-W09,First dose after death week,5,0,0,0
+2021-03-01,2021-W09,First dose before death week,406,0,0,0
+2021-03-01,2021-W09,First dose in death week,12,0,0,0
+2021-03-01,2021-W09,No recorded dose,3515,330,329,9.38833570412518
+2021-03-08,2021-W10,"Dose recorded, first date unavailable",0,0,0,
+2021-03-08,2021-W10,First dose after death week,6,0,0,0
+2021-03-08,2021-W10,First dose before death week,520,0,0,0
+2021-03-08,2021-W10,First dose in death week,21,0,0,0
+2021-03-08,2021-W10,No recorded dose,3504,300,294,8.56164383561644
+2021-03-15,2021-W11,"Dose recorded, first date unavailable",0,0,0,
+2021-03-15,2021-W11,First dose after death week,3,0,0,0
+2021-03-15,2021-W11,First dose before death week,566,0,0,0
+2021-03-15,2021-W11,First dose in death week,13,0,0,0
+2021-03-15,2021-W11,No recorded dose,3263,291,291,8.91817346000613
+2021-03-22,2021-W12,"Dose recorded, first date unavailable",0,0,0,
+2021-03-22,2021-W12,First dose after death week,3,0,0,0
+2021-03-22,2021-W12,First dose before death week,600,0,0,0
+2021-03-22,2021-W12,First dose in death week,7,0,0,0
+2021-03-22,2021-W12,No recorded dose,2881,262,260,9.09406456091635
+2021-03-29,2021-W13,"Dose recorded, first date unavailable",0,0,0,
+2021-03-29,2021-W13,First dose after death week,2,0,0,0
+2021-03-29,2021-W13,First dose before death week,713,0,0,0
+2021-03-29,2021-W13,First dose in death week,10,0,0,0
+2021-03-29,2021-W13,No recorded dose,2670,212,212,7.94007490636704
+2021-04-05,2021-W14,"Dose recorded, first date unavailable",0,0,0,
+2021-04-05,2021-W14,First dose after death week,1,0,0,0
+2021-04-05,2021-W14,First dose before death week,664,0,0,0
+2021-04-05,2021-W14,First dose in death week,4,0,0,0
+2021-04-05,2021-W14,No recorded dose,2301,204,204,8.86571056062581
+2021-04-12,2021-W15,"Dose recorded, first date unavailable",0,0,0,
+2021-04-12,2021-W15,First dose after death week,1,0,0,0
+2021-04-12,2021-W15,First dose before death week,627,0,0,0
+2021-04-12,2021-W15,First dose in death week,8,0,0,0
+2021-04-12,2021-W15,No recorded dose,1998,178,178,8.90890890890891
+2021-04-19,2021-W16,"Dose recorded, first date unavailable",0,0,0,
+2021-04-19,2021-W16,First dose after death week,0,0,0,
+2021-04-19,2021-W16,First dose before death week,724,0,0,0
+2021-04-19,2021-W16,First dose in death week,12,0,0,0
+2021-04-19,2021-W16,No recorded dose,1770,177,176,10
+2021-04-26,2021-W17,"Dose recorded, first date unavailable",0,0,0,
+2021-04-26,2021-W17,First dose after death week,3,0,0,0
+2021-04-26,2021-W17,First dose before death week,733,0,0,0
+2021-04-26,2021-W17,First dose in death week,16,0,0,0
+2021-04-26,2021-W17,No recorded dose,1736,156,156,8.98617511520737
+2021-05-03,2021-W18,"Dose recorded, first date unavailable",0,0,0,
+2021-05-03,2021-W18,First dose after death week,1,0,0,0
+2021-05-03,2021-W18,First dose before death week,806,0,0,0
+2021-05-03,2021-W18,First dose in death week,8,0,0,0
+2021-05-03,2021-W18,No recorded dose,1513,156,155,10.3106411103767
+2021-05-10,2021-W19,"Dose recorded, first date unavailable",0,0,0,
+2021-05-10,2021-W19,First dose after death week,2,0,0,0
+2021-05-10,2021-W19,First dose before death week,851,0,0,0
+2021-05-10,2021-W19,First dose in death week,12,0,0,0
+2021-05-10,2021-W19,No recorded dose,1388,135,135,9.72622478386167
+2021-05-17,2021-W20,"Dose recorded, first date unavailable",0,0,0,
+2021-05-17,2021-W20,First dose after death week,0,0,0,
+2021-05-17,2021-W20,First dose before death week,810,0,0,0
+2021-05-17,2021-W20,First dose in death week,11,0,0,0
+2021-05-17,2021-W20,No recorded dose,1230,121,120,9.83739837398374
+2021-05-24,2021-W21,"Dose recorded, first date unavailable",0,0,0,
+2021-05-24,2021-W21,First dose after death week,1,0,0,0
+2021-05-24,2021-W21,First dose before death week,850,0,0,0
+2021-05-24,2021-W21,First dose in death week,2,0,0,0
+2021-05-24,2021-W21,No recorded dose,1108,113,112,10.1985559566787
+2021-05-31,2021-W22,"Dose recorded, first date unavailable",0,0,0,
+2021-05-31,2021-W22,First dose after death week,1,0,0,0
+2021-05-31,2021-W22,First dose before death week,962,0,0,0
+2021-05-31,2021-W22,First dose in death week,3,0,0,0
+2021-05-31,2021-W22,No recorded dose,1106,125,125,11.3019891500904
+2021-06-07,2021-W23,"Dose recorded, first date unavailable",0,0,0,
+2021-06-07,2021-W23,First dose after death week,1,0,0,0
+2021-06-07,2021-W23,First dose before death week,955,0,0,0
+2021-06-07,2021-W23,First dose in death week,5,0,0,0
+2021-06-07,2021-W23,No recorded dose,1010,120,120,11.8811881188119
+2021-06-14,2021-W24,"Dose recorded, first date unavailable",0,0,0,
+2021-06-14,2021-W24,First dose after death week,1,0,0,0
+2021-06-14,2021-W24,First dose before death week,1032,0,0,0
+2021-06-14,2021-W24,First dose in death week,3,0,0,0
+2021-06-14,2021-W24,No recorded dose,1033,119,119,11.5198451113262
+2021-06-21,2021-W25,"Dose recorded, first date unavailable",0,0,0,
+2021-06-21,2021-W25,First dose after death week,2,0,0,0
+2021-06-21,2021-W25,First dose before death week,1076,0,0,0
+2021-06-21,2021-W25,First dose in death week,3,0,0,0
+2021-06-21,2021-W25,No recorded dose,940,145,145,15.4255319148936
+2021-06-28,2021-W26,"Dose recorded, first date unavailable",0,0,0,
+2021-06-28,2021-W26,First dose after death week,2,0,0,0
+2021-06-28,2021-W26,First dose before death week,1003,0,0,0
+2021-06-28,2021-W26,First dose in death week,4,0,0,0
+2021-06-28,2021-W26,No recorded dose,880,106,106,12.0454545454545
+2021-07-05,2021-W27,"Dose recorded, first date unavailable",0,0,0,
+2021-07-05,2021-W27,First dose after death week,1,0,0,0
+2021-07-05,2021-W27,First dose before death week,1030,0,0,0
+2021-07-05,2021-W27,First dose in death week,0,0,0,
+2021-07-05,2021-W27,No recorded dose,913,112,112,12.2672508214677
+2021-07-12,2021-W28,"Dose recorded, first date unavailable",0,0,0,
+2021-07-12,2021-W28,First dose after death week,0,0,0,
+2021-07-12,2021-W28,First dose before death week,1167,0,0,0
+2021-07-12,2021-W28,First dose in death week,1,0,0,0
+2021-07-12,2021-W28,No recorded dose,873,118,118,13.5166093928981
+2021-07-19,2021-W29,"Dose recorded, first date unavailable",0,0,0,
+2021-07-19,2021-W29,First dose after death week,1,0,0,0
+2021-07-19,2021-W29,First dose before death week,1125,0,0,0
+2021-07-19,2021-W29,First dose in death week,1,0,0,0
+2021-07-19,2021-W29,No recorded dose,833,107,107,12.8451380552221
+2021-07-26,2021-W30,"Dose recorded, first date unavailable",0,0,0,
+2021-07-26,2021-W30,First dose after death week,0,0,0,
+2021-07-26,2021-W30,First dose before death week,1274,0,0,0
+2021-07-26,2021-W30,First dose in death week,1,0,0,0
+2021-07-26,2021-W30,No recorded dose,841,117,117,13.9120095124851
+2021-08-02,2021-W31,"Dose recorded, first date unavailable",0,0,0,
+2021-08-02,2021-W31,First dose after death week,1,0,0,0
+2021-08-02,2021-W31,First dose before death week,1153,0,0,0
+2021-08-02,2021-W31,First dose in death week,2,0,0,0
+2021-08-02,2021-W31,No recorded dose,774,107,107,13.8242894056848
+2021-08-09,2021-W32,"Dose recorded, first date unavailable",0,0,0,
+2021-08-09,2021-W32,First dose after death week,0,0,0,
+2021-08-09,2021-W32,First dose before death week,1229,0,0,0
+2021-08-09,2021-W32,First dose in death week,1,0,0,0
+2021-08-09,2021-W32,No recorded dose,812,114,114,14.0394088669951
+2021-08-16,2021-W33,"Dose recorded, first date unavailable",0,0,0,
+2021-08-16,2021-W33,First dose after death week,1,0,0,0
+2021-08-16,2021-W33,First dose before death week,1200,0,0,0
+2021-08-16,2021-W33,First dose in death week,3,0,0,0
+2021-08-16,2021-W33,No recorded dose,794,105,105,13.2241813602015
+2021-08-23,2021-W34,"Dose recorded, first date unavailable",0,0,0,
+2021-08-23,2021-W34,First dose after death week,0,0,0,
+2021-08-23,2021-W34,First dose before death week,1236,0,0,0
+2021-08-23,2021-W34,First dose in death week,0,0,0,
+2021-08-23,2021-W34,No recorded dose,717,94,94,13.1101813110181
+2021-08-30,2021-W35,"Dose recorded, first date unavailable",0,0,0,
+2021-08-30,2021-W35,First dose after death week,0,0,0,
+2021-08-30,2021-W35,First dose before death week,1266,0,0,0
+2021-08-30,2021-W35,First dose in death week,1,0,0,0
+2021-08-30,2021-W35,No recorded dose,730,104,104,14.2465753424658
+2021-09-06,2021-W36,"Dose recorded, first date unavailable",0,0,0,
+2021-09-06,2021-W36,First dose after death week,0,0,0,
+2021-09-06,2021-W36,First dose before death week,1340,0,0,0
+2021-09-06,2021-W36,First dose in death week,2,0,0,0
+2021-09-06,2021-W36,No recorded dose,732,113,112,15.4371584699454
+2021-09-13,2021-W37,"Dose recorded, first date unavailable",0,0,0,
+2021-09-13,2021-W37,First dose after death week,0,0,0,
+2021-09-13,2021-W37,First dose before death week,1345,0,0,0
+2021-09-13,2021-W37,First dose in death week,2,0,0,0
+2021-09-13,2021-W37,No recorded dose,793,115,115,14.5018915510719
+2021-09-20,2021-W38,"Dose recorded, first date unavailable",0,0,0,
+2021-09-20,2021-W38,First dose after death week,0,0,0,
+2021-09-20,2021-W38,First dose before death week,1340,0,0,0
+2021-09-20,2021-W38,First dose in death week,1,0,0,0
+2021-09-20,2021-W38,No recorded dose,771,129,129,16.7315175097276
+2021-09-27,2021-W39,"Dose recorded, first date unavailable",0,0,0,
+2021-09-27,2021-W39,First dose after death week,1,0,0,0
+2021-09-27,2021-W39,First dose before death week,1376,0,0,0
+2021-09-27,2021-W39,First dose in death week,0,0,0,
+2021-09-27,2021-W39,No recorded dose,717,104,104,14.5048814504881
+2021-10-04,2021-W40,"Dose recorded, first date unavailable",0,0,0,
+2021-10-04,2021-W40,First dose after death week,0,0,0,
+2021-10-04,2021-W40,First dose before death week,1414,0,0,0
+2021-10-04,2021-W40,First dose in death week,2,0,0,0
+2021-10-04,2021-W40,No recorded dose,705,94,94,13.3333333333333
+2021-10-11,2021-W41,"Dose recorded, first date unavailable",0,0,0,
+2021-10-11,2021-W41,First dose after death week,1,0,0,0
+2021-10-11,2021-W41,First dose before death week,1459,0,0,0
+2021-10-11,2021-W41,First dose in death week,0,0,0,
+2021-10-11,2021-W41,No recorded dose,762,109,109,14.3044619422572
+2021-10-18,2021-W42,"Dose recorded, first date unavailable",0,0,0,
+2021-10-18,2021-W42,First dose after death week,0,0,0,
+2021-10-18,2021-W42,First dose before death week,1517,0,0,0
+2021-10-18,2021-W42,First dose in death week,2,0,0,0
+2021-10-18,2021-W42,No recorded dose,825,125,125,15.1515151515152
+2021-10-25,2021-W43,"Dose recorded, first date unavailable",0,0,0,
+2021-10-25,2021-W43,First dose after death week,0,0,0,
+2021-10-25,2021-W43,First dose before death week,1685,0,0,0
+2021-10-25,2021-W43,First dose in death week,2,0,0,0
+2021-10-25,2021-W43,No recorded dose,900,110,110,12.2222222222222
+2021-11-01,2021-W44,"Dose recorded, first date unavailable",0,0,0,
+2021-11-01,2021-W44,First dose after death week,0,0,0,
+2021-11-01,2021-W44,First dose before death week,1752,0,0,0
+2021-11-01,2021-W44,First dose in death week,2,0,0,0
+2021-11-01,2021-W44,No recorded dose,960,116,115,12.0833333333333
+2021-11-08,2021-W45,"Dose recorded, first date unavailable",0,0,0,
+2021-11-08,2021-W45,First dose after death week,1,0,0,0
+2021-11-08,2021-W45,First dose before death week,1813,0,0,0
+2021-11-08,2021-W45,First dose in death week,3,0,0,0
+2021-11-08,2021-W45,No recorded dose,1086,129,129,11.878453038674
+2021-11-15,2021-W46,"Dose recorded, first date unavailable",0,0,0,
+2021-11-15,2021-W46,First dose after death week,1,0,0,0
+2021-11-15,2021-W46,First dose before death week,1836,0,0,0
+2021-11-15,2021-W46,First dose in death week,3,0,0,0
+2021-11-15,2021-W46,No recorded dose,1215,104,104,8.559670781893
+2021-11-22,2021-W47,"Dose recorded, first date unavailable",0,0,0,
+2021-11-22,2021-W47,First dose after death week,0,0,0,
+2021-11-22,2021-W47,First dose before death week,1982,0,0,0
+2021-11-22,2021-W47,First dose in death week,4,0,0,0
+2021-11-22,2021-W47,No recorded dose,1280,128,128,10
+2021-11-29,2021-W48,"Dose recorded, first date unavailable",0,0,0,
+2021-11-29,2021-W48,First dose after death week,0,0,0,
+2021-11-29,2021-W48,First dose before death week,2061,0,0,0
+2021-11-29,2021-W48,First dose in death week,6,0,0,0
+2021-11-29,2021-W48,No recorded dose,1323,125,125,9.44822373393802
+2021-12-06,2021-W49,"Dose recorded, first date unavailable",0,0,0,
+2021-12-06,2021-W49,First dose after death week,0,0,0,
+2021-12-06,2021-W49,First dose before death week,2068,0,0,0
+2021-12-06,2021-W49,First dose in death week,5,0,0,0
+2021-12-06,2021-W49,No recorded dose,1310,122,122,9.31297709923664
+2021-12-13,2021-W50,"Dose recorded, first date unavailable",0,0,0,
+2021-12-13,2021-W50,First dose after death week,0,0,0,
+2021-12-13,2021-W50,First dose before death week,1913,0,0,0
+2021-12-13,2021-W50,First dose in death week,1,0,0,0
+2021-12-13,2021-W50,No recorded dose,1242,115,115,9.25925925925926
+2021-12-20,2021-W51,"Dose recorded, first date unavailable",0,0,0,
+2021-12-20,2021-W51,First dose after death week,0,0,0,
+2021-12-20,2021-W51,First dose before death week,1856,0,0,0
+2021-12-20,2021-W51,First dose in death week,0,0,0,
+2021-12-20,2021-W51,No recorded dose,1095,109,109,9.95433789954338
+2021-12-27,2021-W52,"Dose recorded, first date unavailable",0,0,0,
+2021-12-27,2021-W52,First dose after death week,0,0,0,
+2021-12-27,2021-W52,First dose before death week,1754,0,0,0
+2021-12-27,2021-W52,First dose in death week,2,0,0,0
+2021-12-27,2021-W52,No recorded dose,1030,109,109,10.5825242718447
+2022-01-03,2022-W01,"Dose recorded, first date unavailable",0,0,0,
+2022-01-03,2022-W01,First dose after death week,0,0,0,
+2022-01-03,2022-W01,First dose before death week,1647,0,0,0
+2022-01-03,2022-W01,First dose in death week,3,0,0,0
+2022-01-03,2022-W01,No recorded dose,925,121,121,13.0810810810811
+2022-01-10,2022-W02,"Dose recorded, first date unavailable",0,0,0,
+2022-01-10,2022-W02,First dose after death week,0,0,0,
+2022-01-10,2022-W02,First dose before death week,1700,0,0,0
+2022-01-10,2022-W02,First dose in death week,1,0,0,0
+2022-01-10,2022-W02,No recorded dose,862,98,97,11.368909512761
+2022-01-17,2022-W03,"Dose recorded, first date unavailable",0,0,0,
+2022-01-17,2022-W03,First dose after death week,0,0,0,
+2022-01-17,2022-W03,First dose before death week,1625,0,0,0
+2022-01-17,2022-W03,First dose in death week,0,0,0,
+2022-01-17,2022-W03,No recorded dose,751,88,88,11.7177097203728
+2022-01-24,2022-W04,"Dose recorded, first date unavailable",0,0,0,
+2022-01-24,2022-W04,First dose after death week,0,0,0,
+2022-01-24,2022-W04,First dose before death week,1646,0,0,0
+2022-01-24,2022-W04,First dose in death week,2,0,0,0
+2022-01-24,2022-W04,No recorded dose,730,85,85,11.6438356164384
+2022-01-31,2022-W05,"Dose recorded, first date unavailable",0,0,0,
+2022-01-31,2022-W05,First dose after death week,0,0,0,
+2022-01-31,2022-W05,First dose before death week,1776,0,0,0
+2022-01-31,2022-W05,First dose in death week,1,0,0,0
+2022-01-31,2022-W05,No recorded dose,872,111,110,12.7293577981651
+2022-02-07,2022-W06,"Dose recorded, first date unavailable",0,0,0,
+2022-02-07,2022-W06,First dose after death week,0,0,0,
+2022-02-07,2022-W06,First dose before death week,1834,0,0,0
+2022-02-07,2022-W06,First dose in death week,2,0,0,0
+2022-02-07,2022-W06,No recorded dose,856,91,91,10.6308411214953
+2022-02-14,2022-W07,"Dose recorded, first date unavailable",0,0,0,
+2022-02-14,2022-W07,First dose after death week,0,0,0,
+2022-02-14,2022-W07,First dose before death week,1808,0,0,0
+2022-02-14,2022-W07,First dose in death week,0,0,0,
+2022-02-14,2022-W07,No recorded dose,827,104,103,12.5755743651753
+2022-02-21,2022-W08,"Dose recorded, first date unavailable",0,0,0,
+2022-02-21,2022-W08,First dose after death week,0,0,0,
+2022-02-21,2022-W08,First dose before death week,1716,0,0,0
+2022-02-21,2022-W08,First dose in death week,0,0,0,
+2022-02-21,2022-W08,No recorded dose,797,88,87,11.0414052697616
+2022-02-28,2022-W09,"Dose recorded, first date unavailable",0,0,0,
+2022-02-28,2022-W09,First dose after death week,0,0,0,
+2022-02-28,2022-W09,First dose before death week,1649,0,0,0
+2022-02-28,2022-W09,First dose in death week,0,0,0,
+2022-02-28,2022-W09,No recorded dose,773,91,90,11.7723156532988
+2022-03-07,2022-W10,"Dose recorded, first date unavailable",0,0,0,
+2022-03-07,2022-W10,First dose after death week,0,0,0,
+2022-03-07,2022-W10,First dose before death week,1647,0,0,0
+2022-03-07,2022-W10,First dose in death week,0,0,0,
+2022-03-07,2022-W10,No recorded dose,761,93,93,12.2207621550591
+2022-03-14,2022-W11,"Dose recorded, first date unavailable",0,0,0,
+2022-03-14,2022-W11,First dose after death week,0,0,0,
+2022-03-14,2022-W11,First dose before death week,1655,0,0,0
+2022-03-14,2022-W11,First dose in death week,0,0,0,
+2022-03-14,2022-W11,No recorded dose,671,80,80,11.9225037257824
+2022-03-21,2022-W12,"Dose recorded, first date unavailable",0,0,0,
+2022-03-21,2022-W12,First dose after death week,1,0,0,0
+2022-03-21,2022-W12,First dose before death week,1743,0,0,0
+2022-03-21,2022-W12,First dose in death week,0,0,0,
+2022-03-21,2022-W12,No recorded dose,724,87,87,12.0165745856354
+2022-03-28,2022-W13,"Dose recorded, first date unavailable",0,0,0,
+2022-03-28,2022-W13,First dose after death week,0,0,0,
+2022-03-28,2022-W13,First dose before death week,1821,0,0,0
+2022-03-28,2022-W13,First dose in death week,0,0,0,
+2022-03-28,2022-W13,No recorded dose,718,100,100,13.9275766016713
+2022-04-04,2022-W14,"Dose recorded, first date unavailable",0,0,0,
+2022-04-04,2022-W14,First dose after death week,0,0,0,
+2022-04-04,2022-W14,First dose before death week,1790,0,0,0
+2022-04-04,2022-W14,First dose in death week,0,0,0,
+2022-04-04,2022-W14,No recorded dose,654,90,90,13.7614678899083
+2022-04-11,2022-W15,"Dose recorded, first date unavailable",0,0,0,
+2022-04-11,2022-W15,First dose after death week,0,0,0,
+2022-04-11,2022-W15,First dose before death week,1717,0,0,0
+2022-04-11,2022-W15,First dose in death week,0,0,0,
+2022-04-11,2022-W15,No recorded dose,622,106,106,17.0418006430868
+2022-04-18,2022-W16,"Dose recorded, first date unavailable",0,0,0,
+2022-04-18,2022-W16,First dose after death week,0,0,0,
+2022-04-18,2022-W16,First dose before death week,1752,0,0,0
+2022-04-18,2022-W16,First dose in death week,1,0,0,0
+2022-04-18,2022-W16,No recorded dose,587,94,92,16.0136286201022
+2022-04-25,2022-W17,"Dose recorded, first date unavailable",0,0,0,
+2022-04-25,2022-W17,First dose after death week,0,0,0,
+2022-04-25,2022-W17,First dose before death week,1708,0,0,0
+2022-04-25,2022-W17,First dose in death week,0,0,0,
+2022-04-25,2022-W17,No recorded dose,575,97,95,16.8695652173913
+2022-05-02,2022-W18,"Dose recorded, first date unavailable",0,0,0,
+2022-05-02,2022-W18,First dose after death week,0,0,0,
+2022-05-02,2022-W18,First dose before death week,1673,0,0,0
+2022-05-02,2022-W18,First dose in death week,0,0,0,
+2022-05-02,2022-W18,No recorded dose,619,105,105,16.9628432956381
+2022-05-09,2022-W19,"Dose recorded, first date unavailable",0,0,0,
+2022-05-09,2022-W19,First dose after death week,0,0,0,
+2022-05-09,2022-W19,First dose before death week,1634,0,0,0
+2022-05-09,2022-W19,First dose in death week,0,0,0,
+2022-05-09,2022-W19,No recorded dose,567,73,73,12.8747795414462
+2022-05-16,2022-W20,"Dose recorded, first date unavailable",0,0,0,
+2022-05-16,2022-W20,First dose after death week,0,0,0,
+2022-05-16,2022-W20,First dose before death week,1565,0,0,0
+2022-05-16,2022-W20,First dose in death week,0,0,0,
+2022-05-16,2022-W20,No recorded dose,498,87,86,17.4698795180723
+2022-05-23,2022-W21,"Dose recorded, first date unavailable",0,0,0,
+2022-05-23,2022-W21,First dose after death week,1,0,0,0
+2022-05-23,2022-W21,First dose before death week,1439,0,0,0
+2022-05-23,2022-W21,First dose in death week,0,0,0,
+2022-05-23,2022-W21,No recorded dose,484,96,95,19.8347107438017
+2022-05-30,2022-W22,"Dose recorded, first date unavailable",0,0,0,
+2022-05-30,2022-W22,First dose after death week,0,0,0,
+2022-05-30,2022-W22,First dose before death week,1565,0,0,0
+2022-05-30,2022-W22,First dose in death week,1,0,0,0
+2022-05-30,2022-W22,No recorded dose,500,95,95,19
+2022-06-06,2022-W23,"Dose recorded, first date unavailable",0,0,0,
+2022-06-06,2022-W23,First dose after death week,0,0,0,
+2022-06-06,2022-W23,First dose before death week,1562,0,0,0
+2022-06-06,2022-W23,First dose in death week,0,0,0,
+2022-06-06,2022-W23,No recorded dose,522,74,74,14.176245210728
+2022-06-13,2022-W24,"Dose recorded, first date unavailable",0,0,0,
+2022-06-13,2022-W24,First dose after death week,0,0,0,
+2022-06-13,2022-W24,First dose before death week,1521,0,0,0
+2022-06-13,2022-W24,First dose in death week,0,0,0,
+2022-06-13,2022-W24,No recorded dose,481,101,101,20.997920997921
+2022-06-20,2022-W25,"Dose recorded, first date unavailable",0,0,0,
+2022-06-20,2022-W25,First dose after death week,0,0,0,
+2022-06-20,2022-W25,First dose before death week,1487,0,0,0
+2022-06-20,2022-W25,First dose in death week,0,0,0,
+2022-06-20,2022-W25,No recorded dose,510,95,94,18.6274509803922
+2022-06-27,2022-W26,"Dose recorded, first date unavailable",0,0,0,
+2022-06-27,2022-W26,First dose after death week,0,0,0,
+2022-06-27,2022-W26,First dose before death week,1645,0,0,0
+2022-06-27,2022-W26,First dose in death week,0,0,0,
+2022-06-27,2022-W26,No recorded dose,564,110,110,19.5035460992908
+2022-07-04,2022-W27,"Dose recorded, first date unavailable",0,0,0,
+2022-07-04,2022-W27,First dose after death week,0,0,0,
+2022-07-04,2022-W27,First dose before death week,1417,0,0,0
+2022-07-04,2022-W27,First dose in death week,0,0,0,
+2022-07-04,2022-W27,No recorded dose,488,99,99,20.2868852459016
+2022-07-11,2022-W28,"Dose recorded, first date unavailable",0,0,0,
+2022-07-11,2022-W28,First dose after death week,0,0,0,
+2022-07-11,2022-W28,First dose before death week,1498,0,0,0
+2022-07-11,2022-W28,First dose in death week,0,0,0,
+2022-07-11,2022-W28,No recorded dose,492,83,83,16.869918699187
+2022-07-18,2022-W29,"Dose recorded, first date unavailable",0,0,0,
+2022-07-18,2022-W29,First dose after death week,0,0,0,
+2022-07-18,2022-W29,First dose before death week,1778,0,0,0
+2022-07-18,2022-W29,First dose in death week,0,0,0,
+2022-07-18,2022-W29,No recorded dose,570,122,122,21.4035087719298
+2022-07-25,2022-W30,"Dose recorded, first date unavailable",0,0,0,
+2022-07-25,2022-W30,First dose after death week,0,0,0,
+2022-07-25,2022-W30,First dose before death week,1628,0,0,0
+2022-07-25,2022-W30,First dose in death week,0,0,0,
+2022-07-25,2022-W30,No recorded dose,567,93,93,16.4021164021164
+2022-08-01,2022-W31,"Dose recorded, first date unavailable",0,0,0,
+2022-08-01,2022-W31,First dose after death week,0,0,0,
+2022-08-01,2022-W31,First dose before death week,1702,0,0,0
+2022-08-01,2022-W31,First dose in death week,0,0,0,
+2022-08-01,2022-W31,No recorded dose,531,93,93,17.5141242937853
+2022-08-08,2022-W32,"Dose recorded, first date unavailable",0,0,0,
+2022-08-08,2022-W32,First dose after death week,0,0,0,
+2022-08-08,2022-W32,First dose before death week,1637,0,0,0
+2022-08-08,2022-W32,First dose in death week,0,0,0,
+2022-08-08,2022-W32,No recorded dose,575,119,119,20.695652173913
+2022-08-15,2022-W33,"Dose recorded, first date unavailable",0,0,0,
+2022-08-15,2022-W33,First dose after death week,0,0,0,
+2022-08-15,2022-W33,First dose before death week,1679,0,0,0
+2022-08-15,2022-W33,First dose in death week,0,0,0,
+2022-08-15,2022-W33,No recorded dose,538,112,112,20.817843866171
+2022-08-22,2022-W34,"Dose recorded, first date unavailable",0,0,0,
+2022-08-22,2022-W34,First dose after death week,0,0,0,
+2022-08-22,2022-W34,First dose before death week,1586,0,0,0
+2022-08-22,2022-W34,First dose in death week,0,0,0,
+2022-08-22,2022-W34,No recorded dose,542,111,109,20.479704797048
+2022-08-29,2022-W35,"Dose recorded, first date unavailable",0,0,0,
+2022-08-29,2022-W35,First dose after death week,0,0,0,
+2022-08-29,2022-W35,First dose before death week,1576,0,0,0
+2022-08-29,2022-W35,First dose in death week,0,0,0,
+2022-08-29,2022-W35,No recorded dose,465,95,94,20.4301075268817
+2022-09-05,2022-W36,"Dose recorded, first date unavailable",0,0,0,
+2022-09-05,2022-W36,First dose after death week,0,0,0,
+2022-09-05,2022-W36,First dose before death week,1586,0,0,0
+2022-09-05,2022-W36,First dose in death week,0,0,0,
+2022-09-05,2022-W36,No recorded dose,607,117,116,19.2751235584844
+2022-09-12,2022-W37,"Dose recorded, first date unavailable",0,0,0,
+2022-09-12,2022-W37,First dose after death week,0,0,0,
+2022-09-12,2022-W37,First dose before death week,1711,0,0,0
+2022-09-12,2022-W37,First dose in death week,0,0,0,
+2022-09-12,2022-W37,No recorded dose,530,106,105,20
+2022-09-19,2022-W38,"Dose recorded, first date unavailable",0,0,0,
+2022-09-19,2022-W38,First dose after death week,1,0,0,0
+2022-09-19,2022-W38,First dose before death week,1739,0,0,0
+2022-09-19,2022-W38,First dose in death week,0,0,0,
+2022-09-19,2022-W38,No recorded dose,581,113,112,19.4492254733219
+2022-09-26,2022-W39,"Dose recorded, first date unavailable",0,0,0,
+2022-09-26,2022-W39,First dose after death week,0,0,0,
+2022-09-26,2022-W39,First dose before death week,1769,0,0,0
+2022-09-26,2022-W39,First dose in death week,0,0,0,
+2022-09-26,2022-W39,No recorded dose,605,106,106,17.5206611570248
+2022-10-03,2022-W40,"Dose recorded, first date unavailable",0,0,0,
+2022-10-03,2022-W40,First dose after death week,0,0,0,
+2022-10-03,2022-W40,First dose before death week,1796,0,0,0
+2022-10-03,2022-W40,First dose in death week,0,0,0,
+2022-10-03,2022-W40,No recorded dose,645,128,128,19.8449612403101
+2022-10-10,2022-W41,"Dose recorded, first date unavailable",0,0,0,
+2022-10-10,2022-W41,First dose after death week,0,0,0,
+2022-10-10,2022-W41,First dose before death week,1749,0,0,0
+2022-10-10,2022-W41,First dose in death week,0,0,0,
+2022-10-10,2022-W41,No recorded dose,620,113,112,18.2258064516129
+2022-10-17,2022-W42,"Dose recorded, first date unavailable",0,0,0,
+2022-10-17,2022-W42,First dose after death week,0,0,0,
+2022-10-17,2022-W42,First dose before death week,1788,0,0,0
+2022-10-17,2022-W42,First dose in death week,0,0,0,
+2022-10-17,2022-W42,No recorded dose,555,114,114,20.5405405405405
+2022-10-24,2022-W43,"Dose recorded, first date unavailable",0,0,0,
+2022-10-24,2022-W43,First dose after death week,0,0,0,
+2022-10-24,2022-W43,First dose before death week,1718,0,0,0
+2022-10-24,2022-W43,First dose in death week,0,0,0,
+2022-10-24,2022-W43,No recorded dose,595,129,129,21.6806722689076
+2022-10-31,2022-W44,"Dose recorded, first date unavailable",0,0,0,
+2022-10-31,2022-W44,First dose after death week,0,0,0,
+2022-10-31,2022-W44,First dose before death week,1649,0,0,0
+2022-10-31,2022-W44,First dose in death week,0,0,0,
+2022-10-31,2022-W44,No recorded dose,534,115,115,21.5355805243446
+2022-11-07,2022-W45,"Dose recorded, first date unavailable",0,0,0,
+2022-11-07,2022-W45,First dose after death week,0,0,0,
+2022-11-07,2022-W45,First dose before death week,1713,0,0,0
+2022-11-07,2022-W45,First dose in death week,0,0,0,
+2022-11-07,2022-W45,No recorded dose,534,100,99,18.7265917602996
+2022-11-14,2022-W46,"Dose recorded, first date unavailable",0,0,0,
+2022-11-14,2022-W46,First dose after death week,0,0,0,
+2022-11-14,2022-W46,First dose before death week,1711,0,0,0
+2022-11-14,2022-W46,First dose in death week,0,0,0,
+2022-11-14,2022-W46,No recorded dose,525,109,108,20.7619047619048
+2022-11-21,2022-W47,"Dose recorded, first date unavailable",0,0,0,
+2022-11-21,2022-W47,First dose after death week,0,0,0,
+2022-11-21,2022-W47,First dose before death week,1746,0,0,0
+2022-11-21,2022-W47,First dose in death week,0,0,0,
+2022-11-21,2022-W47,No recorded dose,550,131,131,23.8181818181818
+2022-11-28,2022-W48,"Dose recorded, first date unavailable",0,0,0,
+2022-11-28,2022-W48,First dose after death week,0,0,0,
+2022-11-28,2022-W48,First dose before death week,1874,0,0,0
+2022-11-28,2022-W48,First dose in death week,0,0,0,
+2022-11-28,2022-W48,No recorded dose,588,136,135,23.1292517006803
+2022-12-05,2022-W49,"Dose recorded, first date unavailable",0,0,0,
+2022-12-05,2022-W49,First dose after death week,0,0,0,
+2022-12-05,2022-W49,First dose before death week,1860,0,0,0
+2022-12-05,2022-W49,First dose in death week,0,0,0,
+2022-12-05,2022-W49,No recorded dose,608,139,139,22.8618421052632
+2022-12-12,2022-W50,"Dose recorded, first date unavailable",0,0,0,
+2022-12-12,2022-W50,First dose after death week,0,0,0,
+2022-12-12,2022-W50,First dose before death week,2112,0,0,0
+2022-12-12,2022-W50,First dose in death week,0,0,0,
+2022-12-12,2022-W50,No recorded dose,620,136,135,21.9354838709677
+2022-12-19,2022-W51,"Dose recorded, first date unavailable",0,0,0,
+2022-12-19,2022-W51,First dose after death week,0,0,0,
+2022-12-19,2022-W51,First dose before death week,2318,0,0,0
+2022-12-19,2022-W51,First dose in death week,0,0,0,
+2022-12-19,2022-W51,No recorded dose,704,170,169,24.1477272727273
+2022-12-26,2022-W52,"Dose recorded, first date unavailable",0,0,0,
+2022-12-26,2022-W52,First dose after death week,0,0,0,
+2022-12-26,2022-W52,First dose before death week,2387,0,0,0
+2022-12-26,2022-W52,First dose in death week,0,0,0,
+2022-12-26,2022-W52,No recorded dose,779,173,173,22.2079589216945
+2023-01-02,2023-W01,"Dose recorded, first date unavailable",0,0,0,
+2023-01-02,2023-W01,First dose after death week,0,0,0,
+2023-01-02,2023-W01,First dose before death week,2281,0,0,0
+2023-01-02,2023-W01,First dose in death week,0,0,0,
+2023-01-02,2023-W01,No recorded dose,682,187,187,27.4193548387097
+2023-01-09,2023-W02,"Dose recorded, first date unavailable",0,0,0,
+2023-01-09,2023-W02,First dose after death week,0,0,0,
+2023-01-09,2023-W02,First dose before death week,2028,0,0,0
+2023-01-09,2023-W02,First dose in death week,0,0,0,
+2023-01-09,2023-W02,No recorded dose,637,172,172,27.0015698587127
+2023-01-16,2023-W03,"Dose recorded, first date unavailable",0,0,0,
+2023-01-16,2023-W03,First dose after death week,0,0,0,
+2023-01-16,2023-W03,First dose before death week,1941,0,0,0
+2023-01-16,2023-W03,First dose in death week,0,0,0,
+2023-01-16,2023-W03,No recorded dose,586,145,145,24.7440273037543
+2023-01-23,2023-W04,"Dose recorded, first date unavailable",0,0,0,
+2023-01-23,2023-W04,First dose after death week,0,0,0,
+2023-01-23,2023-W04,First dose before death week,1803,0,0,0
+2023-01-23,2023-W04,First dose in death week,0,0,0,
+2023-01-23,2023-W04,No recorded dose,514,108,108,21.011673151751
+2023-01-30,2023-W05,"Dose recorded, first date unavailable",0,0,0,
+2023-01-30,2023-W05,First dose after death week,0,0,0,
+2023-01-30,2023-W05,First dose before death week,1792,0,0,0
+2023-01-30,2023-W05,First dose in death week,0,0,0,
+2023-01-30,2023-W05,No recorded dose,561,139,139,24.777183600713
+2023-02-06,2023-W06,"Dose recorded, first date unavailable",0,0,0,
+2023-02-06,2023-W06,First dose after death week,0,0,0,
+2023-02-06,2023-W06,First dose before death week,1764,0,0,0
+2023-02-06,2023-W06,First dose in death week,0,0,0,
+2023-02-06,2023-W06,No recorded dose,549,140,140,25.5009107468124
+2023-02-13,2023-W07,"Dose recorded, first date unavailable",0,0,0,
+2023-02-13,2023-W07,First dose after death week,0,0,0,
+2023-02-13,2023-W07,First dose before death week,1786,0,0,0
+2023-02-13,2023-W07,First dose in death week,0,0,0,
+2023-02-13,2023-W07,No recorded dose,555,136,135,24.5045045045045
+2023-02-20,2023-W08,"Dose recorded, first date unavailable",0,0,0,
+2023-02-20,2023-W08,First dose after death week,0,0,0,
+2023-02-20,2023-W08,First dose before death week,1771,0,0,0
+2023-02-20,2023-W08,First dose in death week,0,0,0,
+2023-02-20,2023-W08,No recorded dose,527,130,130,24.6679316888046
+2023-02-27,2023-W09,"Dose recorded, first date unavailable",0,0,0,
+2023-02-27,2023-W09,First dose after death week,0,0,0,
+2023-02-27,2023-W09,First dose before death week,1781,0,0,0
+2023-02-27,2023-W09,First dose in death week,0,0,0,
+2023-02-27,2023-W09,No recorded dose,543,136,136,25.0460405156538
+2023-03-06,2023-W10,"Dose recorded, first date unavailable",0,0,0,
+2023-03-06,2023-W10,First dose after death week,0,0,0,
+2023-03-06,2023-W10,First dose before death week,1823,0,0,0
+2023-03-06,2023-W10,First dose in death week,0,0,0,
+2023-03-06,2023-W10,No recorded dose,516,118,118,22.8682170542636
+2023-03-13,2023-W11,"Dose recorded, first date unavailable",0,0,0,
+2023-03-13,2023-W11,First dose after death week,0,0,0,
+2023-03-13,2023-W11,First dose before death week,1702,0,0,0
+2023-03-13,2023-W11,First dose in death week,0,0,0,
+2023-03-13,2023-W11,No recorded dose,519,127,126,24.4701348747592
+2023-03-20,2023-W12,"Dose recorded, first date unavailable",0,0,0,
+2023-03-20,2023-W12,First dose after death week,0,0,0,
+2023-03-20,2023-W12,First dose before death week,1747,0,0,0
+2023-03-20,2023-W12,First dose in death week,0,0,0,
+2023-03-20,2023-W12,No recorded dose,526,136,136,25.8555133079848
+2023-03-27,2023-W13,"Dose recorded, first date unavailable",0,0,0,
+2023-03-27,2023-W13,First dose after death week,0,0,0,
+2023-03-27,2023-W13,First dose before death week,1651,0,0,0
+2023-03-27,2023-W13,First dose in death week,0,0,0,
+2023-03-27,2023-W13,No recorded dose,546,151,151,27.6556776556777
+2023-04-03,2023-W14,"Dose recorded, first date unavailable",0,0,0,
+2023-04-03,2023-W14,First dose after death week,0,0,0,
+2023-04-03,2023-W14,First dose before death week,1611,0,0,0
+2023-04-03,2023-W14,First dose in death week,0,0,0,
+2023-04-03,2023-W14,No recorded dose,508,116,116,22.8346456692913
+2023-04-10,2023-W15,"Dose recorded, first date unavailable",0,0,0,
+2023-04-10,2023-W15,First dose after death week,0,0,0,
+2023-04-10,2023-W15,First dose before death week,1743,0,0,0
+2023-04-10,2023-W15,First dose in death week,0,0,0,
+2023-04-10,2023-W15,No recorded dose,505,138,138,27.3267326732673
+2023-04-17,2023-W16,"Dose recorded, first date unavailable",0,0,0,
+2023-04-17,2023-W16,First dose after death week,0,0,0,
+2023-04-17,2023-W16,First dose before death week,1689,0,0,0
+2023-04-17,2023-W16,First dose in death week,0,0,0,
+2023-04-17,2023-W16,No recorded dose,466,137,137,29.3991416309013
+2023-04-24,2023-W17,"Dose recorded, first date unavailable",0,0,0,
+2023-04-24,2023-W17,First dose after death week,0,0,0,
+2023-04-24,2023-W17,First dose before death week,1619,0,0,0
+2023-04-24,2023-W17,First dose in death week,0,0,0,
+2023-04-24,2023-W17,No recorded dose,455,113,113,24.8351648351648
+2023-05-01,2023-W18,"Dose recorded, first date unavailable",0,0,0,
+2023-05-01,2023-W18,First dose after death week,0,0,0,
+2023-05-01,2023-W18,First dose before death week,1618,0,0,0
+2023-05-01,2023-W18,First dose in death week,0,0,0,
+2023-05-01,2023-W18,No recorded dose,492,130,130,26.4227642276423
+2023-05-08,2023-W19,"Dose recorded, first date unavailable",0,0,0,
+2023-05-08,2023-W19,First dose after death week,0,0,0,
+2023-05-08,2023-W19,First dose before death week,1582,0,0,0
+2023-05-08,2023-W19,First dose in death week,0,0,0,
+2023-05-08,2023-W19,No recorded dose,426,132,132,30.9859154929578
+2023-05-15,2023-W20,"Dose recorded, first date unavailable",0,0,0,
+2023-05-15,2023-W20,First dose after death week,0,0,0,
+2023-05-15,2023-W20,First dose before death week,1573,0,0,0
+2023-05-15,2023-W20,First dose in death week,0,0,0,
+2023-05-15,2023-W20,No recorded dose,459,132,132,28.7581699346405
+2023-05-22,2023-W21,"Dose recorded, first date unavailable",0,0,0,
+2023-05-22,2023-W21,First dose after death week,0,0,0,
+2023-05-22,2023-W21,First dose before death week,1543,0,0,0
+2023-05-22,2023-W21,First dose in death week,0,0,0,
+2023-05-22,2023-W21,No recorded dose,435,113,111,25.9770114942529
+2023-05-29,2023-W22,"Dose recorded, first date unavailable",0,0,0,
+2023-05-29,2023-W22,First dose after death week,0,0,0,
+2023-05-29,2023-W22,First dose before death week,1527,0,0,0
+2023-05-29,2023-W22,First dose in death week,0,0,0,
+2023-05-29,2023-W22,No recorded dose,443,134,134,30.2483069977427
+2023-06-05,2023-W23,"Dose recorded, first date unavailable",0,0,0,
+2023-06-05,2023-W23,First dose after death week,0,0,0,
+2023-06-05,2023-W23,First dose before death week,1512,0,0,0
+2023-06-05,2023-W23,First dose in death week,0,0,0,
+2023-06-05,2023-W23,No recorded dose,479,148,148,30.8977035490605
+2023-06-12,2023-W24,"Dose recorded, first date unavailable",0,0,0,
+2023-06-12,2023-W24,First dose after death week,0,0,0,
+2023-06-12,2023-W24,First dose before death week,1513,0,0,0
+2023-06-12,2023-W24,First dose in death week,0,0,0,
+2023-06-12,2023-W24,No recorded dose,447,132,132,29.5302013422819
+2023-06-19,2023-W25,"Dose recorded, first date unavailable",0,0,0,
+2023-06-19,2023-W25,First dose after death week,0,0,0,
+2023-06-19,2023-W25,First dose before death week,1629,0,0,0
+2023-06-19,2023-W25,First dose in death week,0,0,0,
+2023-06-19,2023-W25,No recorded dose,500,154,153,30.8
+2023-06-26,2023-W26,"Dose recorded, first date unavailable",0,0,0,
+2023-06-26,2023-W26,First dose after death week,0,0,0,
+2023-06-26,2023-W26,First dose before death week,1509,0,0,0
+2023-06-26,2023-W26,First dose in death week,0,0,0,
+2023-06-26,2023-W26,No recorded dose,429,114,114,26.5734265734266
+2023-07-03,2023-W27,"Dose recorded, first date unavailable",0,0,0,
+2023-07-03,2023-W27,First dose after death week,0,0,0,
+2023-07-03,2023-W27,First dose before death week,1520,0,0,0
+2023-07-03,2023-W27,First dose in death week,0,0,0,
+2023-07-03,2023-W27,No recorded dose,441,107,106,24.2630385487528
+2023-07-10,2023-W28,"Dose recorded, first date unavailable",0,0,0,
+2023-07-10,2023-W28,First dose after death week,0,0,0,
+2023-07-10,2023-W28,First dose before death week,1605,0,0,0
+2023-07-10,2023-W28,First dose in death week,0,0,0,
+2023-07-10,2023-W28,No recorded dose,459,114,113,24.8366013071895
+2023-07-17,2023-W29,"Dose recorded, first date unavailable",0,0,0,
+2023-07-17,2023-W29,First dose after death week,0,0,0,
+2023-07-17,2023-W29,First dose before death week,1526,0,0,0
+2023-07-17,2023-W29,First dose in death week,0,0,0,
+2023-07-17,2023-W29,No recorded dose,449,142,142,31.6258351893096
+2023-07-24,2023-W30,"Dose recorded, first date unavailable",0,0,0,
+2023-07-24,2023-W30,First dose after death week,0,0,0,
+2023-07-24,2023-W30,First dose before death week,1476,0,0,0
+2023-07-24,2023-W30,First dose in death week,0,0,0,
+2023-07-24,2023-W30,No recorded dose,401,103,103,25.6857855361596
+2023-07-31,2023-W31,"Dose recorded, first date unavailable",0,0,0,
+2023-07-31,2023-W31,First dose after death week,0,0,0,
+2023-07-31,2023-W31,First dose before death week,1469,0,0,0
+2023-07-31,2023-W31,First dose in death week,0,0,0,
+2023-07-31,2023-W31,No recorded dose,423,138,138,32.6241134751773
+2023-08-07,2023-W32,"Dose recorded, first date unavailable",0,0,0,
+2023-08-07,2023-W32,First dose after death week,0,0,0,
+2023-08-07,2023-W32,First dose before death week,1541,0,0,0
+2023-08-07,2023-W32,First dose in death week,0,0,0,
+2023-08-07,2023-W32,No recorded dose,459,126,125,27.4509803921569
+2023-08-14,2023-W33,"Dose recorded, first date unavailable",0,0,0,
+2023-08-14,2023-W33,First dose after death week,0,0,0,
+2023-08-14,2023-W33,First dose before death week,1616,0,0,0
+2023-08-14,2023-W33,First dose in death week,0,0,0,
+2023-08-14,2023-W33,No recorded dose,523,137,135,26.1950286806883
+2023-08-21,2023-W34,"Dose recorded, first date unavailable",0,0,0,
+2023-08-21,2023-W34,First dose after death week,0,0,0,
+2023-08-21,2023-W34,First dose before death week,1729,0,0,0
+2023-08-21,2023-W34,First dose in death week,0,0,0,
+2023-08-21,2023-W34,No recorded dose,475,132,132,27.7894736842105
+2023-08-28,2023-W35,"Dose recorded, first date unavailable",0,0,0,
+2023-08-28,2023-W35,First dose after death week,0,0,0,
+2023-08-28,2023-W35,First dose before death week,1517,0,0,0
+2023-08-28,2023-W35,First dose in death week,0,0,0,
+2023-08-28,2023-W35,No recorded dose,393,110,110,27.9898218829517
+2023-09-04,2023-W36,"Dose recorded, first date unavailable",0,0,0,
+2023-09-04,2023-W36,First dose after death week,0,0,0,
+2023-09-04,2023-W36,First dose before death week,1506,0,0,0
+2023-09-04,2023-W36,First dose in death week,0,0,0,
+2023-09-04,2023-W36,No recorded dose,431,125,125,29.0023201856149
+2023-09-11,2023-W37,"Dose recorded, first date unavailable",0,0,0,
+2023-09-11,2023-W37,First dose after death week,0,0,0,
+2023-09-11,2023-W37,First dose before death week,1543,0,0,0
+2023-09-11,2023-W37,First dose in death week,0,0,0,
+2023-09-11,2023-W37,No recorded dose,440,136,136,30.9090909090909
+2023-09-18,2023-W38,"Dose recorded, first date unavailable",0,0,0,
+2023-09-18,2023-W38,First dose after death week,0,0,0,
+2023-09-18,2023-W38,First dose before death week,1580,0,0,0
+2023-09-18,2023-W38,First dose in death week,0,0,0,
+2023-09-18,2023-W38,No recorded dose,471,147,146,31.2101910828026
+2023-09-25,2023-W39,"Dose recorded, first date unavailable",0,0,0,
+2023-09-25,2023-W39,First dose after death week,0,0,0,
+2023-09-25,2023-W39,First dose before death week,1506,0,0,0
+2023-09-25,2023-W39,First dose in death week,0,0,0,
+2023-09-25,2023-W39,No recorded dose,455,113,113,24.8351648351648
+2023-10-02,2023-W40,"Dose recorded, first date unavailable",0,0,0,
+2023-10-02,2023-W40,First dose after death week,0,0,0,
+2023-10-02,2023-W40,First dose before death week,1571,0,0,0
+2023-10-02,2023-W40,First dose in death week,1,0,0,0
+2023-10-02,2023-W40,No recorded dose,509,142,141,27.8978388998035
+2023-10-09,2023-W41,"Dose recorded, first date unavailable",0,0,0,
+2023-10-09,2023-W41,First dose after death week,0,0,0,
+2023-10-09,2023-W41,First dose before death week,1815,0,0,0
+2023-10-09,2023-W41,First dose in death week,1,0,0,0
+2023-10-09,2023-W41,No recorded dose,472,149,148,31.5677966101695
+2023-10-16,2023-W42,"Dose recorded, first date unavailable",0,0,0,
+2023-10-16,2023-W42,First dose after death week,0,0,0,
+2023-10-16,2023-W42,First dose before death week,1723,0,0,0
+2023-10-16,2023-W42,First dose in death week,0,0,0,
+2023-10-16,2023-W42,No recorded dose,481,116,116,24.1164241164241
+2023-10-23,2023-W43,"Dose recorded, first date unavailable",0,0,0,
+2023-10-23,2023-W43,First dose after death week,0,0,0,
+2023-10-23,2023-W43,First dose before death week,1758,0,0,0
+2023-10-23,2023-W43,First dose in death week,1,0,0,0
+2023-10-23,2023-W43,No recorded dose,466,128,127,27.4678111587983
+2023-10-30,2023-W44,"Dose recorded, first date unavailable",0,0,0,
+2023-10-30,2023-W44,First dose after death week,0,0,0,
+2023-10-30,2023-W44,First dose before death week,1658,0,0,0
+2023-10-30,2023-W44,First dose in death week,1,0,0,0
+2023-10-30,2023-W44,No recorded dose,505,153,153,30.2970297029703
+2023-11-06,2023-W45,"Dose recorded, first date unavailable",0,0,0,
+2023-11-06,2023-W45,First dose after death week,0,0,0,
+2023-11-06,2023-W45,First dose before death week,1662,0,0,0
+2023-11-06,2023-W45,First dose in death week,0,0,0,
+2023-11-06,2023-W45,No recorded dose,489,107,107,21.881390593047
+2023-11-13,2023-W46,"Dose recorded, first date unavailable",0,0,0,
+2023-11-13,2023-W46,First dose after death week,0,0,0,
+2023-11-13,2023-W46,First dose before death week,1781,0,0,0
+2023-11-13,2023-W46,First dose in death week,0,0,0,
+2023-11-13,2023-W46,No recorded dose,549,154,154,28.0510018214936
+2023-11-20,2023-W47,"Dose recorded, first date unavailable",0,0,0,
+2023-11-20,2023-W47,First dose after death week,0,0,0,
+2023-11-20,2023-W47,First dose before death week,1811,0,0,0
+2023-11-20,2023-W47,First dose in death week,0,0,0,
+2023-11-20,2023-W47,No recorded dose,501,134,134,26.746506986028
+2023-11-27,2023-W48,"Dose recorded, first date unavailable",0,0,0,
+2023-11-27,2023-W48,First dose after death week,0,0,0,
+2023-11-27,2023-W48,First dose before death week,1846,0,0,0
+2023-11-27,2023-W48,First dose in death week,0,0,0,
+2023-11-27,2023-W48,No recorded dose,546,171,171,31.3186813186813
+2023-12-04,2023-W49,"Dose recorded, first date unavailable",0,0,0,
+2023-12-04,2023-W49,First dose after death week,0,0,0,
+2023-12-04,2023-W49,First dose before death week,1887,0,0,0
+2023-12-04,2023-W49,First dose in death week,0,0,0,
+2023-12-04,2023-W49,No recorded dose,586,159,158,27.1331058020478
+2023-12-11,2023-W50,"Dose recorded, first date unavailable",0,0,0,
+2023-12-11,2023-W50,First dose after death week,0,0,0,
+2023-12-11,2023-W50,First dose before death week,1934,0,0,0
+2023-12-11,2023-W50,First dose in death week,0,0,0,
+2023-12-11,2023-W50,No recorded dose,496,135,135,27.2177419354839
+2023-12-18,2023-W51,"Dose recorded, first date unavailable",0,0,0,
+2023-12-18,2023-W51,First dose after death week,0,0,0,
+2023-12-18,2023-W51,First dose before death week,1881,0,0,0
+2023-12-18,2023-W51,First dose in death week,0,0,0,
+2023-12-18,2023-W51,No recorded dose,593,155,155,26.1382799325464
+2023-12-25,2023-W52,"Dose recorded, first date unavailable",0,0,0,
+2023-12-25,2023-W52,First dose after death week,0,0,0,
+2023-12-25,2023-W52,First dose before death week,1933,0,0,0
+2023-12-25,2023-W52,First dose in death week,0,0,0,
+2023-12-25,2023-W52,No recorded dose,553,130,129,23.5081374321881
+2024-01-01,2024-W01,"Dose recorded, first date unavailable",0,0,0,
+2024-01-01,2024-W01,First dose after death week,0,0,0,
+2024-01-01,2024-W01,First dose before death week,1752,0,0,0
+2024-01-01,2024-W01,First dose in death week,0,0,0,
+2024-01-01,2024-W01,No recorded dose,564,127,127,22.5177304964539
+2024-01-08,2024-W02,"Dose recorded, first date unavailable",0,0,0,
+2024-01-08,2024-W02,First dose after death week,0,0,0,
+2024-01-08,2024-W02,First dose before death week,1747,0,0,0
+2024-01-08,2024-W02,First dose in death week,0,0,0,
+2024-01-08,2024-W02,No recorded dose,477,124,124,25.9958071278826
+2024-01-15,2024-W03,"Dose recorded, first date unavailable",0,0,0,
+2024-01-15,2024-W03,First dose after death week,0,0,0,
+2024-01-15,2024-W03,First dose before death week,1784,0,0,0
+2024-01-15,2024-W03,First dose in death week,0,0,0,
+2024-01-15,2024-W03,No recorded dose,515,131,131,25.4368932038835
+2024-01-22,2024-W04,"Dose recorded, first date unavailable",0,0,0,
+2024-01-22,2024-W04,First dose after death week,0,0,0,
+2024-01-22,2024-W04,First dose before death week,1835,0,0,0
+2024-01-22,2024-W04,First dose in death week,0,0,0,
+2024-01-22,2024-W04,No recorded dose,536,144,144,26.865671641791
+2024-01-29,2024-W05,"Dose recorded, first date unavailable",0,0,0,
+2024-01-29,2024-W05,First dose after death week,0,0,0,
+2024-01-29,2024-W05,First dose before death week,1821,0,0,0
+2024-01-29,2024-W05,First dose in death week,0,0,0,
+2024-01-29,2024-W05,No recorded dose,501,139,139,27.7445109780439
+2024-02-05,2024-W06,"Dose recorded, first date unavailable",0,0,0,
+2024-02-05,2024-W06,First dose after death week,0,0,0,
+2024-02-05,2024-W06,First dose before death week,2001,0,0,0
+2024-02-05,2024-W06,First dose in death week,0,0,0,
+2024-02-05,2024-W06,No recorded dose,513,118,118,23.0019493177388
+2024-02-12,2024-W07,"Dose recorded, first date unavailable",0,0,0,
+2024-02-12,2024-W07,First dose after death week,0,0,0,
+2024-02-12,2024-W07,First dose before death week,1764,0,0,0
+2024-02-12,2024-W07,First dose in death week,0,0,0,
+2024-02-12,2024-W07,No recorded dose,463,112,112,24.1900647948164
+2024-02-19,2024-W08,"Dose recorded, first date unavailable",0,0,0,
+2024-02-19,2024-W08,First dose after death week,0,0,0,
+2024-02-19,2024-W08,First dose before death week,1747,0,0,0
+2024-02-19,2024-W08,First dose in death week,0,0,0,
+2024-02-19,2024-W08,No recorded dose,440,112,112,25.4545454545455
+2024-02-26,2024-W09,"Dose recorded, first date unavailable",0,0,0,
+2024-02-26,2024-W09,First dose after death week,0,0,0,
+2024-02-26,2024-W09,First dose before death week,1632,0,0,0
+2024-02-26,2024-W09,First dose in death week,0,0,0,
+2024-02-26,2024-W09,No recorded dose,407,90,90,22.1130221130221
+2024-03-04,2024-W10,"Dose recorded, first date unavailable",0,0,0,
+2024-03-04,2024-W10,First dose after death week,0,0,0,
+2024-03-04,2024-W10,First dose before death week,1561,0,0,0
+2024-03-04,2024-W10,First dose in death week,0,0,0,
+2024-03-04,2024-W10,No recorded dose,459,138,136,30.0653594771242
+2024-03-11,2024-W11,"Dose recorded, first date unavailable",0,0,0,
+2024-03-11,2024-W11,First dose after death week,0,0,0,
+2024-03-11,2024-W11,First dose before death week,1547,0,0,0
+2024-03-11,2024-W11,First dose in death week,0,0,0,
+2024-03-11,2024-W11,No recorded dose,453,126,125,27.8145695364238
+2024-03-18,2024-W12,"Dose recorded, first date unavailable",0,0,0,
+2024-03-18,2024-W12,First dose after death week,0,0,0,
+2024-03-18,2024-W12,First dose before death week,1541,0,0,0
+2024-03-18,2024-W12,First dose in death week,0,0,0,
+2024-03-18,2024-W12,No recorded dose,405,120,118,29.6296296296296
+2024-03-25,2024-W13,"Dose recorded, first date unavailable",0,0,0,
+2024-03-25,2024-W13,First dose after death week,0,0,0,
+2024-03-25,2024-W13,First dose before death week,1598,0,0,0
+2024-03-25,2024-W13,First dose in death week,0,0,0,
+2024-03-25,2024-W13,No recorded dose,429,110,110,25.6410256410256
+2024-04-01,2024-W14,"Dose recorded, first date unavailable",0,0,0,
+2024-04-01,2024-W14,First dose after death week,0,0,0,
+2024-04-01,2024-W14,First dose before death week,1622,0,0,0
+2024-04-01,2024-W14,First dose in death week,0,0,0,
+2024-04-01,2024-W14,No recorded dose,400,110,110,27.5
+2024-04-08,2024-W15,"Dose recorded, first date unavailable",0,0,0,
+2024-04-08,2024-W15,First dose after death week,0,0,0,
+2024-04-08,2024-W15,First dose before death week,1505,0,0,0
+2024-04-08,2024-W15,First dose in death week,0,0,0,
+2024-04-08,2024-W15,No recorded dose,411,99,99,24.0875912408759
+2024-04-15,2024-W16,"Dose recorded, first date unavailable",0,0,0,
+2024-04-15,2024-W16,First dose after death week,0,0,0,
+2024-04-15,2024-W16,First dose before death week,1493,0,0,0
+2024-04-15,2024-W16,First dose in death week,0,0,0,
+2024-04-15,2024-W16,No recorded dose,432,115,114,26.6203703703704
+2024-04-22,2024-W17,"Dose recorded, first date unavailable",0,0,0,
+2024-04-22,2024-W17,First dose after death week,0,0,0,
+2024-04-22,2024-W17,First dose before death week,1460,0,0,0
+2024-04-22,2024-W17,First dose in death week,0,0,0,
+2024-04-22,2024-W17,No recorded dose,371,110,110,29.6495956873315
+2024-04-29,2024-W18,"Dose recorded, first date unavailable",0,0,0,
+2024-04-29,2024-W18,First dose after death week,0,0,0,
+2024-04-29,2024-W18,First dose before death week,1521,0,0,0
+2024-04-29,2024-W18,First dose in death week,0,0,0,
+2024-04-29,2024-W18,No recorded dose,396,109,109,27.5252525252525
+2024-05-06,2024-W19,"Dose recorded, first date unavailable",0,0,0,
+2024-05-06,2024-W19,First dose after death week,0,0,0,
+2024-05-06,2024-W19,First dose before death week,1453,0,0,0
+2024-05-06,2024-W19,First dose in death week,0,0,0,
+2024-05-06,2024-W19,No recorded dose,387,126,126,32.5581395348837
+2024-05-13,2024-W20,"Dose recorded, first date unavailable",0,0,0,
+2024-05-13,2024-W20,First dose after death week,0,0,0,
+2024-05-13,2024-W20,First dose before death week,1478,0,0,0
+2024-05-13,2024-W20,First dose in death week,0,0,0,
+2024-05-13,2024-W20,No recorded dose,375,111,110,29.6
+2024-05-20,2024-W21,"Dose recorded, first date unavailable",0,0,0,
+2024-05-20,2024-W21,First dose after death week,0,0,0,
+2024-05-20,2024-W21,First dose before death week,1535,0,0,0
+2024-05-20,2024-W21,First dose in death week,0,0,0,
+2024-05-20,2024-W21,No recorded dose,392,110,110,28.0612244897959
+2024-05-27,2024-W22,"Dose recorded, first date unavailable",0,0,0,
+2024-05-27,2024-W22,First dose after death week,0,0,0,
+2024-05-27,2024-W22,First dose before death week,1476,0,0,0
+2024-05-27,2024-W22,First dose in death week,0,0,0,
+2024-05-27,2024-W22,No recorded dose,404,110,110,27.2277227722772
+2024-06-03,2024-W23,"Dose recorded, first date unavailable",0,0,0,
+2024-06-03,2024-W23,First dose after death week,0,0,0,
+2024-06-03,2024-W23,First dose before death week,1440,0,0,0
+2024-06-03,2024-W23,First dose in death week,0,0,0,
+2024-06-03,2024-W23,No recorded dose,400,110,110,27.5
+2024-06-10,2024-W24,"Dose recorded, first date unavailable",0,0,0,
+2024-06-10,2024-W24,First dose after death week,0,0,0,
+2024-06-10,2024-W24,First dose before death week,1419,0,0,0
+2024-06-10,2024-W24,First dose in death week,0,0,0,
+2024-06-10,2024-W24,No recorded dose,351,110,110,31.3390313390313
+2024-06-17,2024-W25,"Dose recorded, first date unavailable",0,0,0,
+2024-06-17,2024-W25,First dose after death week,0,0,0,
+2024-06-17,2024-W25,First dose before death week,1553,0,0,0
+2024-06-17,2024-W25,First dose in death week,0,0,0,
+2024-06-17,2024-W25,No recorded dose,403,108,108,26.7990074441687
+2024-06-24,2024-W26,"Dose recorded, first date unavailable",0,0,0,
+2024-06-24,2024-W26,First dose after death week,0,0,0,
+2024-06-24,2024-W26,First dose before death week,1557,0,0,0
+2024-06-24,2024-W26,First dose in death week,0,0,0,
+2024-06-24,2024-W26,No recorded dose,376,126,126,33.5106382978723
+2024-07-01,2024-W27,"Dose recorded, first date unavailable",0,0,0,
+2024-07-01,2024-W27,First dose after death week,0,0,0,
+2024-07-01,2024-W27,First dose before death week,1242,0,0,0
+2024-07-01,2024-W27,First dose in death week,0,0,0,
+2024-07-01,2024-W27,No recorded dose,342,81,81,23.6842105263158
+2024-07-08,2024-W28,"Dose recorded, first date unavailable",0,0,0,
+2024-07-08,2024-W28,First dose after death week,0,0,0,
+2024-07-08,2024-W28,First dose before death week,1417,0,0,0
+2024-07-08,2024-W28,First dose in death week,0,0,0,
+2024-07-08,2024-W28,No recorded dose,412,118,118,28.6407766990291
+2024-07-15,2024-W29,"Dose recorded, first date unavailable",0,0,0,
+2024-07-15,2024-W29,First dose after death week,0,0,0,
+2024-07-15,2024-W29,First dose before death week,1258,0,0,0
+2024-07-15,2024-W29,First dose in death week,0,0,0,
+2024-07-15,2024-W29,No recorded dose,352,99,99,28.125
+2024-07-22,2024-W30,"Dose recorded, first date unavailable",0,0,0,
+2024-07-22,2024-W30,First dose after death week,0,0,0,
+2024-07-22,2024-W30,First dose before death week,1344,0,0,0
+2024-07-22,2024-W30,First dose in death week,0,0,0,
+2024-07-22,2024-W30,No recorded dose,350,90,90,25.7142857142857
+2024-07-29,2024-W31,"Dose recorded, first date unavailable",0,0,0,
+2024-07-29,2024-W31,First dose after death week,0,0,0,
+2024-07-29,2024-W31,First dose before death week,1285,0,0,0
+2024-07-29,2024-W31,First dose in death week,0,0,0,
+2024-07-29,2024-W31,No recorded dose,367,98,98,26.7029972752044
+2024-08-05,2024-W32,"Dose recorded, first date unavailable",0,0,0,
+2024-08-05,2024-W32,First dose after death week,0,0,0,
+2024-08-05,2024-W32,First dose before death week,1262,0,0,0
+2024-08-05,2024-W32,First dose in death week,0,0,0,
+2024-08-05,2024-W32,No recorded dose,320,87,87,27.1875
+2024-08-12,2024-W33,"Dose recorded, first date unavailable",0,0,0,
+2024-08-12,2024-W33,First dose after death week,0,0,0,
+2024-08-12,2024-W33,First dose before death week,1132,0,0,0
+2024-08-12,2024-W33,First dose in death week,0,0,0,
+2024-08-12,2024-W33,No recorded dose,308,85,85,27.5974025974026
+2024-08-19,2024-W34,"Dose recorded, first date unavailable",0,0,0,
+2024-08-19,2024-W34,First dose after death week,0,0,0,
+2024-08-19,2024-W34,First dose before death week,1149,0,0,0
+2024-08-19,2024-W34,First dose in death week,0,0,0,
+2024-08-19,2024-W34,No recorded dose,302,94,94,31.1258278145695
+2024-08-26,2024-W35,"Dose recorded, first date unavailable",0,0,0,
+2024-08-26,2024-W35,First dose after death week,0,0,0,
+2024-08-26,2024-W35,First dose before death week,1147,0,0,0
+2024-08-26,2024-W35,First dose in death week,0,0,0,
+2024-08-26,2024-W35,No recorded dose,296,77,76,26.0135135135135
+2024-09-02,2024-W36,"Dose recorded, first date unavailable",0,0,0,
+2024-09-02,2024-W36,First dose after death week,0,0,0,
+2024-09-02,2024-W36,First dose before death week,744,0,0,0
+2024-09-02,2024-W36,First dose in death week,0,0,0,
+2024-09-02,2024-W36,No recorded dose,212,61,60,28.7735849056604
+2024-09-09,2024-W37,"Dose recorded, first date unavailable",0,0,0,
+2024-09-09,2024-W37,First dose after death week,0,0,0,
+2024-09-09,2024-W37,First dose before death week,763,0,0,0
+2024-09-09,2024-W37,First dose in death week,1,0,0,0
+2024-09-09,2024-W37,No recorded dose,178,43,43,24.1573033707865
+2024-09-16,2024-W38,"Dose recorded, first date unavailable",0,0,0,
+2024-09-16,2024-W38,First dose after death week,0,0,0,
+2024-09-16,2024-W38,First dose before death week,569,0,0,0
+2024-09-16,2024-W38,First dose in death week,0,0,0,
+2024-09-16,2024-W38,No recorded dose,131,30,30,22.9007633587786
+2024-09-23,2024-W39,"Dose recorded, first date unavailable",0,0,0,
+2024-09-23,2024-W39,First dose after death week,0,0,0,
+2024-09-23,2024-W39,First dose before death week,485,0,0,0
+2024-09-23,2024-W39,First dose in death week,0,0,0,
+2024-09-23,2024-W39,No recorded dose,148,37,37,25
+2024-09-30,2024-W40,"Dose recorded, first date unavailable",0,0,0,
+2024-09-30,2024-W40,First dose after death week,0,0,0,
+2024-09-30,2024-W40,First dose before death week,213,0,0,0
+2024-09-30,2024-W40,First dose in death week,0,0,0,
+2024-09-30,2024-W40,No recorded dose,62,16,16,25.8064516129032
+2024-10-07,2024-W41,"Dose recorded, first date unavailable",0,0,0,
+2024-10-07,2024-W41,First dose after death week,0,0,0,
+2024-10-07,2024-W41,First dose before death week,36,0,0,0
+2024-10-07,2024-W41,First dose in death week,0,0,0,
+2024-10-07,2024-W41,No recorded dose,12,2,2,16.6666666666667

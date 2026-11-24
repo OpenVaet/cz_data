@@ -1,0 +1,2 @@
+"missed_share_of_true_vaccinated_deaths","capture_probability","multiplier","geography","release","denominator","calibration","calibration_period","weekly_rule"
+0.15,0.85,1.17647058823529,"CZ","November NZIP","Step 14 person-days held fixed","Death-weighted missed share per five-year age over the full study","study","Common log-odds shift after within-week baseline age reconciliation"
