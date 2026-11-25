@@ -39,7 +39,9 @@ write_guide <- function(stage,placements,tables,rate_dir) {
     sprintf("The no-dose rate %s and the rate after a first dose %s.",
             move(year$original_no_dose_asmr,year$adjusted_no_dose_asmr),move(year$original_vaccinated_asmr,year$adjusted_vaccinated_asmr)),
     "Both panels count the same resident deaths and use the same person-time. The actual frequency of missed links remains unknown.")
-  main_alt <- "Weekly all-cause ASMR at ages 15 and over under the original death allocation (A) and the 15% missed-linkage scenario (B), with the resident total and vaccinated share of person-time."
+  main_alt <- paste("Weekly all-cause mortality at ages 15 and over by recorded dose status and for all residents.",
+                    "Panels A and B compare the original allocation with the 15% missed-linkage scenario.",
+                    "Panel C stacks first and later doses. Vertical lines mark sustained variant majorities in Czech sequences.")
   main_caption <- paste0("Figure V19. ",main$title,". ",main$caption)
   img <- file.path(stage,"png",main$file)
   standalone <- c("<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>",
@@ -122,7 +124,7 @@ write_guide <- function(stage,placements,tables,rate_dir) {
         "<p><a href='png/",r$file,"' download><code>",r$file,"</code></a></p>",
         "<p><strong>Suggested caption</strong><br>",escape(caption),"</p><small>Source · ",escape(credit),"</small>",
         if(id %in% names(tables)) data_table(tables[[id]]) else "",
-        "</div><figure><a href='png/",r$file,"'><img alt='",escape(paste(name,r$title)),"' loading='lazy' src='",preview(r$file),"'></a></figure></article>"))
+        "</div><figure><a href='png/",r$file,"'><img alt='",escape(if(id=="V19") main_alt else paste(name,r$title)),"' loading='lazy' src='",preview(r$file),"'></a></figure></article>"))
     }
     body <- c(body,"</section>")
   }

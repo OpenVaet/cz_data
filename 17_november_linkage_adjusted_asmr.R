@@ -61,8 +61,10 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
          substr(step,1,2),"_DIR. The full package also supports CZ_PUBLICATION_INPUTS=snapshot.")
   }
   a <- resolve(step12,step12_dir,c("age_week_cells.csv","weekly_asmr.csv"))
-  b <- resolve(step15,step15_dir,c("scenario.csv","weekly_five_year_components.csv"),TRUE)
-  inputs <- rbind(a,b)
+  b <- resolve(step15,step15_dir,c("scenario.csv","weekly_five_year_components.csv","weekly_age_groups.csv"),TRUE)
+  variants_file <- "ecdc_cz_gisaid_variants.csv"
+  variants_path <- file.path(root,"publication_source",variants_file)
+  inputs <- rbind(a,b,data.frame(step="ECDC",file=variants_file,path=variants_path,sha256=sha(variants_path)))
   base <- file.path(root,"data","analysis","17_november_linkage_adjusted_asmr")
   dir.create(base,showWarnings=FALSE,recursive=TRUE)
   stage <- tempfile(".build-",tmpdir=base); stopifnot(dir.create(stage))
@@ -75,7 +77,8 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
   figure_ids <- c("V19",sprintf("S%02d",5:10))
   names_png <- sprintf("%s_weekly_asmr_15pct_ages_%s.png",figure_ids,
                        gsub("+","_plus",gsub("-","_",groups,fixed=TRUE),fixed=TRUE))
-  names_csv <- c("weekly_asmr.csv","annual_asmr.csv","weekly_age_cells.csv","calibration_check.csv","input_sha256.csv")
+  names_csv <- c("weekly_asmr.csv","annual_asmr.csv","weekly_age_cells.csv","calibration_check.csv","input_sha256.csv",
+                 "V19_weekly_doses.csv","V19_variant_markers.csv")
   verify <- function(d) {
     inv <- csv(file.path(d,"outputs.csv")); p <- file.path(d,inv$file)
     stopifnot(!anyDuplicated(inv$file),setequal(inv$file,c(names_png,names_csv)),
@@ -88,6 +91,38 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
   x <- subset(csv(a$path[a$file=="age_week_cells.csv"]),release=="november")
   s01 <- subset(csv(a$path[a$file=="weekly_asmr.csv"]),release=="november")
   dates <- seq(as.Date("2020-03-02"),as.Date("2023-12-25"),by="week")
+  # November dose events at attained ages 15+, using the same age allocation
+  # as Step 14. Keep fractional counts until display.
+  dose_groups <- csv(b$path[b$file=="weekly_age_groups.csv"])
+  dose_fields <- c("first_doses","later_doses","all_doses")
+  stopifnot(!anyDuplicated(dose_groups[c("week","age_group")]),
+            setequal(dose_groups$age_group,groups[-1]),nrow(dose_groups)==length(dates)*(length(groups)-1L),
+            all(is.finite(as.matrix(dose_groups[dose_fields])) & as.matrix(dose_groups[dose_fields])>=0),
+            equal(dose_groups$first_doses+dose_groups$later_doses,dose_groups$all_doses))
+  doses <- aggregate(dose_groups[dose_fields],dose_groups[c("week","week_start")],sum)
+  doses <- doses[order(doses$week_start),]
+  stopifnot(identical(as.Date(doses$week_start),dates),identical(doses$week,format(dates,"%G-W%V")),
+            identical(dose_groups$week,format(as.Date(dose_groups$week_start),"%G-W%V")))
+
+  # Use a single reporting stream. A marker requires a strict majority in
+  # consecutive calendar weeks, even when some sampling weeks are absent.
+  variants <- csv(variants_path)
+  variants$week_start <- dates[match(variants$year_week,format(dates,"%G-%V"))]
+  stopifnot(!anyNA(variants),!anyDuplicated(variants[c("year_week","variant")]),
+            all(variants$number_sequenced_known_variant>0),all(variants$number_detections_variant>=0),
+            all(variants$number_detections_variant<=variants$number_sequenced_known_variant))
+  winners <- subset(variants,!variant %in% c("Other","UNK","SGTF") &
+                      2*number_detections_variant>number_sequenced_known_variant)
+  winners <- winners[order(winners$week_start),]
+  following <- match(paste(winners$variant,winners$week_start+7),paste(winners$variant,winners$week_start))
+  winners$next_week_detections <- winners$number_detections_variant[following]
+  winners$next_week_sequences <- winners$number_sequenced_known_variant[following]
+  markers <- winners[!is.na(following),]
+  markers <- markers[!duplicated(markers$variant),]
+  labels <- c("B.1.1.7"="Alpha","B.1.617.2"="Delta","BA.1"="Omicron BA.1")
+  markers$label <- ifelse(markers$variant %in% names(labels),labels[markers$variant],markers$variant)
+  markers$plot_date <- markers$week_start+3
+  stopifnot(nrow(markers)>0,!anyDuplicated(markers$week_start))
   ages <- seq.int(15L,90L,5L)
   f <- f[order(f$week_start,f$age),]; x <- x[order(x$week_start,x$age),]
   f$week_start <- as.Date(f$week_start)
@@ -166,6 +201,7 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
   save_csv(f[c("week","week_start","age","age_group","esp_weight_15plus","esp_weight_within_group",counts,days,
                "reconciled_vaccinated_deaths","missed_deaths","transferred_deaths")],names_csv[3])
   save_csv(cal,names_csv[4]); save_csv(inputs[c("step","file","sha256")],names_csv[5])
+  save_csv(doses,"V19_weekly_doses.csv"); save_csv(markers,"V19_variant_markers.csv")
 
   draw <- function(k) {
     g <- groups[k]; z <- weekly[weekly$age_group==g,]
@@ -175,10 +211,15 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
     year <- as.Date(paste0(2021:2023,"-01-01"))
     ink <- "#163744"; muted <- "#465D66"; guide <- "#DCE5E5"
     cols <- c("#A44919","#086B91","#475953")
-    png(file.path(stage,names_png[k]),width=11.9,height=9.6,units="in",res=170,bg="white",pointsize=11)
+    main_figure <- k==1L
+    marker_colour <- "#685475"
+    if (main_figure) lim <- lim+c(-3.5,3.5)
+    png(file.path(stage,names_png[k]),width=11.9,height=if(main_figure) 11.4 else 9.6,units="in",res=170,bg="white",pointsize=11)
     on.exit(dev.off())
-    layout(matrix(1:5,ncol=1),heights=c(1.05,2.15,2.15,.80,.60))
+    if (main_figure) layout(matrix(1:6,ncol=1),heights=c(1.06,.38,2.15,2.15,1.72,.52)) else
+      layout(matrix(1:5,ncol=1),heights=c(1.05,2.15,2.15,.80,.60))
     par(family="sans",xaxs="i",yaxs="i",fg=ink,col.axis=muted,lend="round")
+    if (main_figure) par(cex=.85)
     blank <- function() {par(mar=rep(0,4)); plot.new(); plot.window(c(0,1),c(0,1))}
     blank()
     plot_title <- paste0("Weekly age-standardized mortality at ages ",g)
@@ -189,10 +230,19 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
     text(.025,if(k==1L) .51 else .33,"November NZIP and Eurostat residents   ·   Deaths per 100,000 person-years   ·   ESP 2013",adj=0,col=muted,cex=1.05)
     legend(.02,if(k==1L) .33 else .22,c("No recorded dose","At least one dose","All residents"),col=cols,lty=c(1,1,2),
            lwd=c(2,2,1.6),horiz=TRUE,bty="n",x.intersp=.6,y.intersp=.75,cex=1.02,text.col=ink)
+    if (main_figure) {
+      par(mar=c(0,5.3,0,1.25))
+      plot.new(); plot.window(as.numeric(lim),c(0,1))
+      text(as.numeric(lim[1]),.48,"Variant in Czech samples",adj=0,cex=.90,col=marker_colour)
+      text(markers$plot_date,.54,sub("Omicron ","Omicron\n",markers$label,fixed=TRUE),cex=.91,font=2,col=marker_colour)
+      segments(markers$plot_date,0,markers$plot_date,.24,col=marker_colour,lty=3)
+    }
     for (j in 1:2) {
       par(mar=c(.65,5.3,2.05,1.25))
       plot.new();plot.window(as.numeric(lim),range(ticks))
-      abline(v=as.numeric(year),col=guide,lty=3);abline(h=ticks,col=guide)
+      if (!main_figure) abline(v=as.numeric(year),col=guide,lty=3)
+      abline(h=ticks,col=guide)
+      if (main_figure) abline(v=as.numeric(markers$plot_date),col=marker_colour,lty=3,lwd=1.1)
       if (min(ticks)<0) abline(h=0,col="#859792")
       axis(2,at=ticks,labels=format(ticks,big.mark=",",scientific=FALSE,trim=TRUE),las=1,lwd=0,line=-.4)
       lines(d,z$resident_asmr,col=cols[3],lty=2,lwd=1.65)
@@ -200,17 +250,36 @@ build_linkage_asmr <- function(root=Sys.getenv("CZ_PROJECT_ROOT","."),
       for (i in 1:2) lines(d,z[[pair[i]]],col=cols[i],lwd=1.7)
       title(main=c("A    Original allocation","B    15% missed-linkage scenario")[j],adj=0,col.main=ink,cex.main=1.12,line=.55)
     }
-    par(mar=c(1.9,5.3,1.2,1.25))
-    plot.new();plot.window(as.numeric(lim),c(0,100))
-    polygon(c(d,rev(d)),c(z$vaccinated_share_pct,rep(0,nrow(z))),border=NA,col="#DDD7E9")
-    abline(v=as.numeric(year),col=guide,lty=3)
-    lines(d,z$vaccinated_share_pct,col="#755E88",lwd=1.4)
-    axis(2,at=c(0,100),labels=c("0%","100%"),las=1,lwd=0,line=-.4,cex.axis=.85)
+    if (main_figure) {
+      par(mar=c(1.9,5.3,2.05,1.25))
+      dose_ticks <- pretty(c(0,max(doses$all_doses)),n=4)
+      plot.new(); plot.window(as.numeric(lim),range(dose_ticks))
+      abline(h=dose_ticks,col=guide)
+      fills <- c("#177469","#8EC7B9")
+      rect(d-2.9,0,d+2.9,doses$first_doses,col=fills[1],border=NA)
+      rect(d-2.9,doses$first_doses,d+2.9,doses$all_doses,col=fills[2],border=NA)
+      abline(v=as.numeric(markers$plot_date),col=marker_colour,lty=3,lwd=1.1)
+      axis(2,at=dose_ticks,labels=format(dose_ticks/1000,trim=TRUE),las=1,lwd=0,line=-.4)
+      title(main="C    Weekly doses administered at ages 15+ (thousands)",adj=0,col.main=ink,cex.main=1.12,line=.55)
+      legend("topright",c("First dose","Later doses"),fill=fills,border=NA,bty="n",horiz=TRUE,cex=.94,text.col=ink)
+    } else {
+      par(mar=c(1.9,5.3,1.2,1.25))
+      plot.new();plot.window(as.numeric(lim),c(0,100))
+      polygon(c(d,rev(d)),c(z$vaccinated_share_pct,rep(0,nrow(z))),border=NA,col="#DDD7E9")
+      abline(v=as.numeric(year),col=guide,lty=3)
+      lines(d,z$vaccinated_share_pct,col="#755E88",lwd=1.4)
+      axis(2,at=c(0,100),labels=c("0%","100%"),las=1,lwd=0,line=-.4,cex.axis=.85)
+      title(main="Share of resident person-time after a first dose",adj=0,col.main=ink,cex.main=.95,line=.1)
+    }
     axis(1,at=as.numeric(xt),labels=paste(rep(c("Jul","Jan"),length.out=length(xt)),format(xt,"%Y")),lwd=0,line=-.35,cex.axis=.85)
-    title(main="Share of resident person-time after a first dose",adj=0,col.main=ink,cex.main=.95,line=.1)
     blank()
-    text(.025,.70,"15% of modelled vaccinated deaths over the full study within each five-year age band (90+ pooled).",adj=0,cex=.91,col=muted)
-    text(.025,.42,"Each transfer preserves resident deaths and person-time. A gap denotes an age stratum with no exposure.",adj=0,cex=.91,col=muted)
+    if (main_figure) {
+      text(.025,.74,"Dotted purple lines mark the first of two consecutive weeks above 50% of Czech sequences (ECDC / GISAID).",adj=0,cex=.92,col=muted)
+      text(.025,.39,"B applies the 15% assumption within each five-year age band (90+ pooled). Gaps indicate missing exposure in an age stratum.",adj=0,cex=.88,col=muted)
+    } else {
+      text(.025,.70,"15% of modelled vaccinated deaths over the full study within each five-year age band (90+ pooled).",adj=0,cex=.91,col=muted)
+      text(.025,.42,"Each transfer preserves resident deaths and person-time. A gap denotes an age stratum with no exposure.",adj=0,cex=.91,col=muted)
+    }
     if(any(z$original_no_dose_asmr<0,na.rm=TRUE))
       text(.025,.14,"Negative original estimates arise when recorded vaccinated deaths exceed the resident count used in subtraction.",adj=0,cex=.85,col=muted)
     if (k==1L) draw_publication_header(figure_ids[k],plot_title,grDevices::dev.size("px")[1])

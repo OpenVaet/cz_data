@@ -24,6 +24,10 @@ Open the HTML file at the printed path. It contains figure previews, captions an
 | Certified COVID-19 deaths and 2023 mortality by recorded dose status | T04 and T05 |
 | Original allocation and the 15% missed-linkage scenario | V12–V18 by age group and V19 for the weekly ASMR at ages 15+ |
 
+Figure V19 also shows weekly first and later doses at ages 15+, summed over the November age groups in Step 15. The dose counts use estimated attained age at administration. Step 17 exports the unrounded counts in `V19_weekly_doses.csv` and the counts supporting each variant marker in `V19_variant_markers.csv`.
+
+Variant markers are centred on the first of two consecutive ISO weeks in which one named ECDC reporting category exceeded 50% of Czech sequences with a known variant. Only the GISAID series is used. The archived Czech series has usable denominators through 2023-W44. The offline input `publication_source/ecdc_cz_gisaid_variants.csv` retains the week, category, detections and denominator from rows with `country_code == "CZ"`, `source == "GISAID"`, a valid positive denominator and a week in the study. The upstream CSV has SHA-256 `709d1f5d0c3a4c0ab45ff9ce5aa4502385578b9b8dae5dfdd3fdb0a6c5a56e64`. [ECDC data description](https://www.ecdc.europa.eu/en/publications-data/data-virus-variants-covid-19-eueea) · [Archived CSV](https://opendata.ecdc.europa.eu/covid19/virusvariant/csv/data.csv)
+
 ## Repeat the three checks behind the discussion
 
 Run this in the same R session as the snapshot build. Step 16 already calls Step 17. Calling Step 17 again verifies its saved output and returns the directory that Step 20 needs.

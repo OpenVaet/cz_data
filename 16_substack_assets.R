@@ -58,7 +58,8 @@ build_substack_assets <- function(root = Sys.getenv("CZ_PROJECT_ROOT", ".")) {
   source_file <- function(step,name) file.path(source_dirs[[as.character(step)]],name)
   read_result <- function(step,name) csv(source_file(step,name))
   inputs <- do.call(rbind,provenance)
-  support <- c("placements.csv","required_outputs.csv","csu_g02_u07.csv","csu_g02_sources.csv","age_panel.R","tables.R","guide.R")
+  support <- c("placements.csv","required_outputs.csv","csu_g02_u07.csv","csu_g02_sources.csv","age_panel.R","tables.R","guide.R",
+               "ecdc_cz_gisaid_variants.csv")
   hashes <- vapply(c(file.path(src,support),file.path(root,c("16_substack_assets.R","17_november_linkage_adjusted_asmr.R"))),hash,"")
   base <- file.path(root,"publication")
   dir.create(base,recursive=TRUE,showWarnings=FALSE)
