@@ -1,0 +1,41 @@
+"week_start","status","surveillance_recorded","deaths","missing_birth_deaths","missing_sex_deaths","week","missing_birth_pct","missing_sex_pct"
+"2021-11-22","Dose recorded, first date unavailable",FALSE,0,0,0,"2021-W47",,
+"2021-11-22","Dose recorded, first date unavailable",TRUE,0,0,0,"2021-W47",,
+"2021-11-22","First dose after death week",FALSE,0,0,0,"2021-W47",,
+"2021-11-22","First dose after death week",TRUE,0,0,0,"2021-W47",,
+"2021-11-22","First dose before death week",FALSE,1641,0,0,"2021-W47",0,0
+"2021-11-22","First dose before death week",TRUE,341,0,0,"2021-W47",0,0
+"2021-11-22","First dose in death week",FALSE,4,0,0,"2021-W47",0,0
+"2021-11-22","First dose in death week",TRUE,0,0,0,"2021-W47",,
+"2021-11-22","No recorded dose",FALSE,861,128,128,"2021-W47",14.8664343786295,14.8664343786295
+"2021-11-22","No recorded dose",TRUE,419,0,0,"2021-W47",0,0
+"2021-11-29","Dose recorded, first date unavailable",FALSE,0,0,0,"2021-W48",,
+"2021-11-29","Dose recorded, first date unavailable",TRUE,0,0,0,"2021-W48",,
+"2021-11-29","First dose after death week",FALSE,0,0,0,"2021-W48",,
+"2021-11-29","First dose after death week",TRUE,0,0,0,"2021-W48",,
+"2021-11-29","First dose before death week",FALSE,1692,0,0,"2021-W48",0,0
+"2021-11-29","First dose before death week",TRUE,369,0,0,"2021-W48",0,0
+"2021-11-29","First dose in death week",FALSE,6,0,0,"2021-W48",0,0
+"2021-11-29","First dose in death week",TRUE,0,0,0,"2021-W48",,
+"2021-11-29","No recorded dose",FALSE,874,125,125,"2021-W48",14.3020594965675,14.3020594965675
+"2021-11-29","No recorded dose",TRUE,449,0,0,"2021-W48",0,0
+"2021-12-06","Dose recorded, first date unavailable",FALSE,0,0,0,"2021-W49",,
+"2021-12-06","Dose recorded, first date unavailable",TRUE,0,0,0,"2021-W49",,
+"2021-12-06","First dose after death week",FALSE,0,0,0,"2021-W49",,
+"2021-12-06","First dose after death week",TRUE,0,0,0,"2021-W49",,
+"2021-12-06","First dose before death week",FALSE,1712,0,0,"2021-W49",0,0
+"2021-12-06","First dose before death week",TRUE,356,0,0,"2021-W49",0,0
+"2021-12-06","First dose in death week",FALSE,5,0,0,"2021-W49",0,0
+"2021-12-06","First dose in death week",TRUE,0,0,0,"2021-W49",,
+"2021-12-06","No recorded dose",FALSE,865,122,122,"2021-W49",14.1040462427746,14.1040462427746
+"2021-12-06","No recorded dose",TRUE,445,0,0,"2021-W49",0,0
+"2021-12-13","Dose recorded, first date unavailable",FALSE,0,0,0,"2021-W50",,
+"2021-12-13","Dose recorded, first date unavailable",TRUE,0,0,0,"2021-W50",,
+"2021-12-13","First dose after death week",FALSE,0,0,0,"2021-W50",,
+"2021-12-13","First dose after death week",TRUE,0,0,0,"2021-W50",,
+"2021-12-13","First dose before death week",FALSE,1614,0,0,"2021-W50",0,0
+"2021-12-13","First dose before death week",TRUE,299,0,0,"2021-W50",0,0
+"2021-12-13","First dose in death week",FALSE,1,0,0,"2021-W50",0,0
+"2021-12-13","First dose in death week",TRUE,0,0,0,"2021-W50",,
+"2021-12-13","No recorded dose",FALSE,836,115,115,"2021-W50",13.755980861244,13.755980861244
+"2021-12-13","No recorded dose",TRUE,406,0,0,"2021-W50",0,0
